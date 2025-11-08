@@ -25,6 +25,7 @@ dependencies:
   cloud_functions: ^6.0.4
   flutter_launcher_icons: ^0.14.4
   lottie: ^3.3.2
+  flutter_riverpod: ^3.0.3
 
 dev_dependencies:
   flutter_test:
@@ -39,6 +40,8 @@ flutter_native_splash:
   ios: true
   web: false
   fullscreen: true
+
+#! Android 11 and below configuration:
   color: #d4e4ed
   background_image: assets/background.png
   image: assets/splash_logo.png
