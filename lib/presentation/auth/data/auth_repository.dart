@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart'; // 1. Import Google Sign-In
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:is_application/core/models/user_model.dart';
 import 'package:is_application/core/providers/firebase_providers.dart';
 import 'package:is_application/core/repositories/firestore_repository.dart';
@@ -24,12 +24,11 @@ abstract class AuthRepository {
 
 class AuthRepositoryImpl implements AuthRepository {
   final FirebaseAuth _firebaseAuth;
-  // 2. Add an instance of GoogleSignIn
   final GoogleSignIn _googleSignIn;
 
-  // 3. Initialize it in the constructor
   AuthRepositoryImpl(this._firebaseAuth) : _googleSignIn = GoogleSignIn();
 
+  // ... (all other methods like signIn, signUp, etc. are correct) ...
   @override
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -40,7 +39,11 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
-    } on FirebaseAuthException {
+      final user = _firebaseAuth.currentUser;
+      if (user != null) {
+        await user.reload();
+      }
+    } catch (e) {
       rethrow;
     }
   }
@@ -58,8 +61,8 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
-
       if (userCredential.user != null) {
+        await userCredential.user!.sendEmailVerification();
         final newUser = UserModel(
           uid: userCredential.user!.uid,
           firstName: firstName,
@@ -70,7 +73,7 @@ class AuthRepositoryImpl implements AuthRepository {
             .read(firestoreRepositoryProvider)
             .createUserDocument(newUser);
       }
-    } on FirebaseAuthException {
+    } catch (e) {
       rethrow;
     }
   }
@@ -78,28 +81,23 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signInWithGoogle(Ref ref) async {
     try {
-      // 4. FIX: Use the class instance '_googleSignIn'
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         return; // User canceled
       }
-
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
-
-      // 5. This 'credential' call will now work because your
-      // 'firebase_auth' package is up to date.
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-
       final UserCredential userCredential =
           await _firebaseAuth.signInWithCredential(credential);
-
-      // 6. Check if new user and create doc
+      final user = _firebaseAuth.currentUser;
+      if (user != null) {
+        await user.reload();
+      }
       if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-        final user = userCredential.user;
         if (user != null) {
           final newUser = UserModel(
             uid: user.uid,
@@ -112,14 +110,13 @@ class AuthRepositoryImpl implements AuthRepository {
               .createUserDocument(newUser);
         }
       }
-    } on FirebaseAuthException {
+    } catch (e) {
       rethrow;
     }
   }
 
   @override
   Future<void> signOut() async {
-    // 6. FIX: Also sign out from Google
     await _googleSignIn.signOut();
     await _firebaseAuth.signOut();
   }

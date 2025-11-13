@@ -20,7 +20,7 @@ class AuthLink extends StatelessWidget {
         text: TextSpan(
           // Default style for "Already have an account? "
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
               ),
           children: [
             TextSpan(text: prefixText),

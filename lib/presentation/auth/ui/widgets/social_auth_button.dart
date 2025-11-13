@@ -17,7 +17,8 @@ class SocialAuthButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = ref.watch(appColorsProvider);
+    final brightness = MediaQuery.of(context).platformBrightness;
+    final colors = ref.watch(appColorsProvider(brightness));
 
     return SizedBox(
       width: double.infinity,
@@ -31,7 +32,7 @@ class SocialAuthButton extends ConsumerWidget {
         ),
         label: Text(text),
         style: TextButton.styleFrom(
-          backgroundColor: colors.lightGreyFill,
+          backgroundColor: colors.surface,
           foregroundColor: colors.onBackground,
           padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
           shape: RoundedRectangleBorder(

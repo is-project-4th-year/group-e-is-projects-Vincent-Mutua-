@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// FIX: We no longer need go_router imports here
+// import 'package:go_router/go_router.dart'; 
+// import 'package:is_application/core/routing/app_router.dart';
 import 'package:is_application/core/providers/firebase_providers.dart';
 import 'package:is_application/presentation/auth/providers/auth_providers.dart';
 
@@ -27,66 +30,76 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
 
   @override
   void dispose() {
-    // ALWAYS cancel timers in dispose()
     _timer.cancel();
     super.dispose();
   }
 
   /// Checks with Firebase if the user's email is verified.
   Future<void> _checkEmailVerified() async {
-    final user = ref.read(firebaseAuthProvider).currentUser;
+    final auth = ref.read(firebaseAuthProvider);
+    User? user = auth.currentUser;
+
     if (user == null) {
-      _timer.cancel(); // Stop checking if user is null
+      _timer.cancel();
       return;
     }
 
-    // Crucial step:
-    // Firebase caches the user, so we MUST reload to get the latest status.
-    await user.reload();
+    try {
+      // 1. CRITICAL: Reload the user's data from the server
+      await user.reload();
 
-    if (user.emailVerified) {
-      _timer.cancel();
-      // The user is now verified. The AuthWrapper will automatically
-      // see the new state from authStateProvider and navigate to HomeScreen.
-      // We don't even need to manually navigate!
+      // 2. CRITICAL: Re-read the user object *after* reload
+      user = auth.currentUser;
+
+      // 3. Check the fresh user's verification status
+      if (user != null && user.emailVerified) {
+        _timer.cancel(); // Stop the timer
+
+        // 4. FIX: Invalidate the auth provider
+        // This tells Riverpod to re-run the authStateProvider.
+        // GoRouter is watching authStateProvider, so it will see
+        // the new verified status and automatically redirect to home.
+        ref.invalidate(authStateProvider);
+        
+        // We remove the old manual navigation:
+        // if (mounted) {
+        //   context.go(AppRoutes.home);
+        // }
+      }
+    } on FirebaseAuthException catch (e) {
+      // Handle cases where the user was deleted or token expired
+      if (e.code == 'user-not-found' || e.code == 'user-disabled') {
+        _timer.cancel();
+        ref.read(authControllerProvider.notifier).signOut();
+      }
     }
   }
 
   /// Resends the verification email.
   Future<void> _resendVerificationEmail() async {
     setState(() => _isResending = true);
-    
     try {
       final user = ref.read(firebaseAuthProvider).currentUser;
-      
-      // The await pause happens here
       await user?.sendEmailVerification();
 
-      // FIX: Check if the widget is still mounted before using 'context'
-      if (!mounted) return; 
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Verification email sent!')),
       );
     } on FirebaseAuthException catch (e) {
-      // Also check mounted before using context inside the catch block
-      if (!mounted) return; 
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.message}')),
       );
     } finally {
-      // We can safely call setState here without 'mounted' check
-      // because finally is guaranteed to run after the try/catch blocks
-      // but 'setState' itself has an implicit check.
       if (mounted) {
-         setState(() => _isResending = false);
+        setState(() => _isResending = false);
       }
     }
   }
+
   @override
   Widget build(BuildContext context) {
-    // Get the user's email to display it
     final userEmail = ref.watch(firebaseAuthProvider).currentUser?.email;
 
     return Scaffold(
@@ -121,8 +134,6 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
-
-              // "Resend Email" Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -137,8 +148,6 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // "Cancel" (Logout) Button
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
@@ -146,7 +155,6 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
                     _timer.cancel();
                     ref.read(authControllerProvider.notifier).signOut();
                   },
-                  // Style to look less important (e.g., as a text button)
                   style: TextButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error,
                   ),

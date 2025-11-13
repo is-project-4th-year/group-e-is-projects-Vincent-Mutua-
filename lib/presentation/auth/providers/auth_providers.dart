@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:is_application/core/providers/firebase_providers.dart';
+// import 'package:is_application/core/providers/firebase_providers.dart';
 import 'package:is_application/presentation/auth/data/auth_repository.dart';
 
 // --- 1. AUTH STATE PROVIDER ---
@@ -44,20 +44,16 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
         lastName: lastName,
         ref: _ref,
       );
-      
-      // Send verification email
-      final user = _ref.read(firebaseAuthProvider).currentUser;
-      if (user != null && !user.emailVerified) {
-        await user.sendEmailVerification();
-      }
-      
+
+      // --- FIX: REMOVED REDUNDANT EMAIL VERIFICATION LOGIC ---
+      // The call is now handled reliably inside auth_repository.dart
+
       state = const AsyncValue.data(null);
     } on FirebaseAuthException catch (e, stack) {
       state = AsyncValue.error(e, stack);
     }
   }
 
-  // --- ADD THIS METHOD ---
   /// Signs in or signs up a user with their Google account.
   Future<void> signInWithGoogle() async {
     state = const AsyncValue.loading();
@@ -73,7 +69,6 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       }
     }
   }
-  // --- END OF NEW METHOD ---
 
   /// Signs out the current user.
   Future<void> signOut() async {

@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_application/core/routing/app_router.dart';
 import 'package:is_application/core/theme/app_theme.dart';
-// Import and initialize Firebase
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 
 void main() async {
-  // We need to initialize Firebase *before* running the app
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.playIntegrity,
   );
 
   runApp(
@@ -25,17 +27,23 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch your providers
-    final theme = ref.watch(appThemeProvider);
-    final router = ref.watch(goRouterProvider); // 1. Watch the router provider
+    final router = ref.watch(goRouterProvider);
+    
+    // 4. FIX: Removed the unused 'brightness' variable
 
-    // 2. Change MaterialApp to MaterialApp.router
+    // 5. Watch the light and dark themes
+    final lightTheme = ref.watch(appThemeProvider(Brightness.light));
+    final darkTheme = ref.watch(appThemeProvider(Brightness.dark));
+
     return MaterialApp.router(
       title: 'ADHD Support App',
       debugShowCheckedModeBanner: false,
-      theme: theme,
       
-      // 3. Set the routerConfig
+      // 6. Apply the themes
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: ThemeMode.system, // This respects the device's setting
+      
       routerConfig: router,
     );
   }

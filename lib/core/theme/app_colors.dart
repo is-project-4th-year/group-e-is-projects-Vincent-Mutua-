@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Provider that returns the correct [AppColors] based on system brightness.
-final appColorsProvider = Provider<AppColors>((ref) {
-  // We use 'watch' here, but since this provider is unlikely to change
-  // during the app's lifecycle (unless the user changes system theme),
-  // it's efficient.
-  final brightness = ref.watch(brightnessProvider);
-  
-  // Return the correct color implementation
+// FIX: Convert to a Provider.family
+// This allows our ThemeProvider to tell this provider
+// whether to build light or dark colors.
+final appColorsProvider = Provider.family<AppColors, Brightness>((ref, brightness) {
   switch (brightness) {
     case Brightness.light:
       return AppColorsLight();
@@ -17,126 +13,97 @@ final appColorsProvider = Provider<AppColors>((ref) {
   }
 });
 
-/// A provider that exposes the current system brightness.
-/// This is useful for widgets that need to adapt manually.
-final brightnessProvider = Provider<Brightness>((ref) {
-  // This is a placeholder. In a real app, you might get this
-  // from a theme service or directly from MediaQuery.
-  // For now, we'll just default to light.
-  return Brightness.light;
-  // Example for watching system theme:
-  // final platformBrightness = View.of(ref.context).platformDispatcher.platformBrightness;
-  // return platformBrightness;
-});
+// We no longer need the separate 'brightnessProvider'
 
 /// Abstract class defining the color palette for the app.
-/// This ensures that both light and dark themes have the same
-/// set of colors defined.
 abstract class AppColors {
-  // --- Primary ---
-  Color get primary;
-  Color get onPrimary; // Text/icons on top of 'primary'
+  // --- Primary (Action & Focus) ---
+  Color get primary;       // Main action color
+  Color get primaryLight;  // Lighter shade for accents
+  Color get primaryDark;   // Darker shade for text/dark mode
+  Color get onPrimary;     // Text on primary color
 
-  // --- Background ---
-  Color get background;
-  Color get onBackground; // Text/icons on top of 'background'
-  Color get surface;      // Cards, dialogs, bottom sheets
-  Color get onSurface;    // Text/icons on top of 'surface'
+  // --- Background/Hierarchy ---
+  Color get background;    // Light blue background
+  Color get surface;       // White cards/fields
+  Color get onBackground;  // Text on background
+  Color get onSurface;     // Text on surface
+  Color get border;        // Border for text fields
 
-  // --- Utility ---
-  Color get border;
+  // --- Utility/Status ---
   Color get error;
   Color get onError;
 
-  // --- Custom ---
-  // Add specific colors from your Figma here
+  // --- Custom/Auth ---
   Color get googleButton;
-  Color get onGoogleButton;
-  Color get lightGreyFill;
 }
 
-/// Concrete implementation of [AppColors] for LIGHT mode.
+/// Concrete implementation of [AppColors] for LIGHT mode
 class AppColorsLight implements AppColors {
-  // Define your light theme colors from Figma here
-  // Example using Material-style hex codes
+  // Your Palette:
+  @override
+  Color get primary => const Color(0xFF3B82F6);       // Strong Blue
+  @override
+  Color get primaryLight => const Color(0xFF60A5FA);  // Lighter Blue
+  @override
+  Color get primaryDark => const Color(0xFF1E3A8A);   // Dark Navy Blue
+  @override
+  Color get onPrimary => const Color(0xFFFFFFFF);     // White text
 
+  // Background/Hierarchy
   @override
-  Color get primary => const Color(0xFF0052D4); // Example: A strong blue
+  Color get background => const Color(0xFFEBF8FF);   // Very Light Blue
+  @override
+  Color get onBackground => const Color(0xFF1E3A8A); // Dark Navy text
+  @override
+  Color get surface => const Color(0xFFFFFFFF);     // White cards
+  @override
+  Color get onSurface => const Color(0xFF1E3A8A);  // Dark Navy text
+  @override
+  Color get border => const Color(0xFF60A5FA).withAlpha(128); // Accent border
 
+  // Utility
   @override
-  Color get onPrimary => const Color(0xFFFFFFFF);
-
-  @override
-  Color get background => const Color(0xFFFFFFFF);
-
-  @override
-  Color get onBackground => const Color(0xFF1B1B1F);
-
-  @override
-  Color get surface => const Color(0xFFFDFDFD);
-
-  @override
-  Color get onSurface => const Color(0xFF1B1B1F);
-
-  @override
-  Color get border => const Color(0xFF72777F);
-  
-  @override
-  Color get error => const Color(0xFFB3261E);
-  
+  Color get error => const Color(0xFFD32F2F);
   @override
   Color get onError => const Color(0xFFFFFFFF);
 
-  // --- Custom ---
+  // Custom
   @override
   Color get googleButton => const Color(0xFF4285F4);
-  
-  @override
-  Color get onGoogleButton => const Color(0xFFFFFFFF);
-  
-  @override
-  Color get lightGreyFill => const Color(0xFFE0E0E0);
 }
 
-/// Concrete implementation of [AppColors] for DARK mode.
+/// Concrete implementation of [AppColors] for DARK mode
 class AppColorsDark implements AppColors {
-  // Define your dark theme colors from Figma here
-  // These are often inverted or desaturated versions of light colors.
-  
+  // Your Palette (re-interpreted for dark mode)
   @override
-  Color get primary => const Color(0xFFB0C6FF); // Example: A lighter blue
+  Color get primary => const Color(0xFF60A5FA);       // Light Blue (main action)
+  @override
+  Color get primaryLight => const Color(0xFFEBF8FF);  // Lightest Blue
+  @override
+  Color get primaryDark => const Color(0xFF3B82F6);   // Mid Blue
+  @override
+  Color get onPrimary => const Color(0xFF1E3A8A);     // Dark Navy text
 
+  // Background/Hierarchy
   @override
-  Color get onPrimary => const Color(0xFF002A78);
+  Color get background => const Color(0xFF1E3A8A);   // Dark Navy background
+  @override
+  Color get onBackground => const Color(0xFFEBF8FF); // Lightest Blue text
+  @override
+  Color get surface => const Color(0xFF294b9b); // Slightly lighter navy for cards
+  @override
+  Color get onSurface => const Color(0xFFEBF8FF);    // Lightest Blue text
+  @override
+  Color get border => const Color(0xFF3B82F6);       // Mid Blue border
 
+  // Utility
   @override
-  Color get background => const Color(0xFF1B1B1F);
+  Color get error => const Color(0xFFEF5350);
+  @override
+  Color get onError => const Color(0xFF1E3A8A);
 
+  // Custom
   @override
-  Color get onBackground => const Color(0xFFE3E2E6);
-
-  @override
-  Color get surface => const Color(0xFF1B1B1F); // Often same as background in dark mode
-
-  @override
-  Color get onSurface => const Color(0xFFE3E2E6);
-
-  @override
-  Color get border => const Color(0xFF8C9199);
-  
-  @override
-  Color get error => const Color(0xFFF2B8B5);
-  
-  @override
-  Color get onError => const Color(0xFF601410);
-
-  // --- Custom ---
-  @override
-  Color get googleButton => const Color(0xFF4285F4); // Often stays the same
-  
-  @override
-  Color get onGoogleButton => const Color(0xFFFFFFFF);
-  
-  @override
-  Color get lightGreyFill => const Color(0xFF3A3A3A); // A dark grey
+  Color get googleButton => const Color(0xFF4285F4);
 }
