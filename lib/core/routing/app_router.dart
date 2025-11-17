@@ -8,6 +8,7 @@ import 'package:is_application/presentation/auth/ui/screens/signup_details_scree
 import 'package:is_application/presentation/auth/ui/screens/signup_screen.dart';
 import 'package:is_application/presentation/auth/ui/screens/verification_screen.dart';
 import 'package:is_application/presentation/journal/ui/screens/journal_editor_screen.dart';
+import 'package:is_application/presentation/profile/ui/screens/profile_screen.dart';
 import 'package:is_application/core/routing/app_shell.dart';
 import 'package:is_application/presentation/home/ui/screens/home_screen.dart';
 import 'package:is_application/presentation/tasks/ui/screens/tasks_screen.dart';
@@ -34,6 +35,7 @@ class AppRoutes {
   
   // Top-level sub-page
   static const String journalEditor = '/journal-editor';
+  static const String profile = '/profile';
 }
 
 // Create the GoRouter provider
@@ -96,6 +98,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.journalEditor,
         builder: (context, state) => const JournalEditorScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (context, state) => const ProfileScreen(),
       ),
       
       // --- StatefulShellRoute for Persistent Bottom Navigation ---

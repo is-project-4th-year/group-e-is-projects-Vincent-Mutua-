@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_application/core/routing/app_router.dart';
 import 'package:is_application/core/theme/app_theme.dart';
+import 'package:is_application/core/providers/theme_mode_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
@@ -35,6 +36,9 @@ class MyApp extends ConsumerWidget {
     final lightTheme = ref.watch(appThemeProvider(Brightness.light));
     final darkTheme = ref.watch(appThemeProvider(Brightness.dark));
 
+    // Watch user preference for theme mode
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp.router(
       title: 'ADHD Support App',
       debugShowCheckedModeBanner: false,
@@ -42,7 +46,7 @@ class MyApp extends ConsumerWidget {
       // 6. Apply the themes
       theme: lightTheme,
       darkTheme: darkTheme,
-      themeMode: ThemeMode.system, // This respects the device's setting
+      themeMode: themeMode, // Respect user preference (persisted)
       
       routerConfig: router,
     );

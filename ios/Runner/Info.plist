@@ -49,5 +49,10 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<!-- Photo and camera access descriptions required for image_picker -->
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>This app needs access to your photo library to choose a profile picture.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>This app needs camera access to take a profile photo.</string>
 	</dict>
 </plist>

@@ -25,6 +25,17 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Dashboard'),
         elevation: 0,
         actions: [
+          // Profile avatar - navigates to Profile screen
+          IconButton(
+            tooltip: 'Profile',
+            onPressed: () => context.go(AppRoutes.profile),
+            icon: CircleAvatar(
+              radius: 14,
+              backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
+                  ? NetworkImage(user.photoURL!) as ImageProvider
+                  : const AssetImage('assets/icons/avatar_placeholder.png'),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
