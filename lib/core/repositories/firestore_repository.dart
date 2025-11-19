@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_application/core/models/journal_entry_model.dart'; // 1. NEW IMPORT
+import 'package:is_application/core/models/journal_entry_model.dart'; 
 import 'package:is_application/core/models/task_model.dart';
 import 'package:is_application/core/models/user_model.dart';
 import 'package:is_application/core/providers/firebase_providers.dart';
@@ -16,7 +16,7 @@ abstract class FirestoreRepository {
   Future<void> updateTask(String taskId, Map<String, dynamic> data);
   Future<void> deleteTask(String taskId);
   
-  // --- 2. NEW: Journal Methods (Contract) ---
+  // --- Journal Methods ---
   Stream<List<JournalEntryModel>> watchJournalEntries(String uid);
   Future<void> addJournalEntry(JournalEntryModel entry);
   Future<void> updateJournalEntry(String entryId, Map<String, dynamic> data);
@@ -36,7 +36,7 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
   /// Reference to the 'TASKS' collection in Firestore.
   CollectionReference get _tasksCollection => _firestore.collection('TASKS');
 
-  /// 3. NEW: Reference to the 'JOURNAL' collection in Firestore.
+  /// Reference to the 'JOURNAL' collection in Firestore.
   CollectionReference get _journalCollection => _firestore.collection('JOURNAL');
 
   // --- User Method Implementation ---
@@ -95,19 +95,22 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
     }
   }
 
-  // --- 4. NEW: Journal Method Implementations ---
+  // --- 4. NEW: Journal Method Implementations (FIXED) ---
 
   @override
   Stream<List<JournalEntryModel>> watchJournalEntries(String uid) {
     try {
       return _journalCollection
           .where('uid', isEqualTo: uid)
-          .orderBy('timestamp', descending: true) // Show newest entries first
+          // FIXED: Changed 'timestamp' to 'createdAt' to match the Model
+          .orderBy('createdAt', descending: true) 
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs
-            .map((doc) => JournalEntryModel.fromSnapshot(doc))
-            .toList();
+        return snapshot.docs.map((doc) {
+          // FIXED: Use .data() and .id separately to use .fromMap()
+          final data = doc.data() as Map<String, dynamic>;
+          return JournalEntryModel.fromMap(data, doc.id);
+        }).toList();
       });
     } on FirebaseException catch (e) {
       throw Exception('Error watching journal entries: ${e.message}');
@@ -117,7 +120,8 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
   @override
   Future<void> addJournalEntry(JournalEntryModel entry) async {
     try {
-      await _journalCollection.add(entry.toJson());
+      // FIXED: Changed .toJson() to .toMap()
+      await _journalCollection.add(entry.toMap());
     } on FirebaseException catch (e) {
       throw Exception('Error adding journal entry: ${e.message}');
     }

@@ -1,84 +1,158 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_application/core/models/journal_entry_model.dart';
-import 'package:is_application/core/providers/firebase_providers.dart';
 import 'package:is_application/core/repositories/firestore_repository.dart';
+import 'package:is_application/core/providers/firebase_providers.dart';
 import 'package:is_application/presentation/auth/providers/auth_providers.dart';
+import 'package:flutter/material.dart';
+import 'package:is_application/presentation/journal/data/models/text_format_range.dart';
 
-// --- 1. The Journal Entries Stream Provider ---
-/// This is the primary provider your UI will watch.
-///
-// ignore: unintended_html_in_doc_comment
-/// It provides a real-time stream (AsyncValue<List<JournalEntryModel>>)
-/// of the user's journal entries, filtered by their UID.
-final journalEntriesProvider = StreamProvider<List<JournalEntryModel>>((ref) {
-  // Get the current user
+
+final journalListProvider = StreamProvider.autoDispose<List<JournalEntryModel>>((ref) {
   final user = ref.watch(authStateProvider).value;
-  if (user == null) {
-    return Stream.value([]); // Return an empty stream if logged out
-  }
+  if (user == null) return Stream.value([]); 
   
-  // Watch the repository's journal stream
-  final firestoreRepository = ref.watch(firestoreRepositoryProvider);
-  return firestoreRepository.watchJournalEntries(user.uid);
+  final repository = ref.watch(firestoreRepositoryProvider);
+  return repository.watchJournalEntries(user.uid);
 });
 
-// --- 2. The Journal Controller Provider ---
-/// This is the "controller" your UI will call to perform actions.
-///
-/// We use an AsyncNotifier to manage asynchronous operations
-/// (like adding/deleting) and handle loading/error states.
-final journalControllerProvider =
-    AsyncNotifierProvider<JournalController, void>(() {
+
+class JournalEditorState {
+  final String title;
+  final String content;
+  final List<TextFormatRange> formats; // Stored formatting
+  
+  // Active Toggles (for the UI buttons)
+  final bool isBoldActive;
+  final bool isItalicActive;
+  final bool isUnderlineActive;
+
+  const JournalEditorState({
+    this.title = '',
+    this.content = '',
+    this.formats = const [],
+    this.isBoldActive = false,
+    this.isItalicActive = false,
+    this.isUnderlineActive = false,
+  });
+
+  JournalEditorState copyWith({
+    String? title,
+    String? content,
+    List<TextFormatRange>? formats,
+    bool? isBoldActive,
+    bool? isItalicActive,
+    bool? isUnderlineActive,
+  }) {
+    return JournalEditorState(
+      title: title ?? this.title,
+      content: content ?? this.content,
+      formats: formats ?? this.formats,
+      isBoldActive: isBoldActive ?? this.isBoldActive,
+      isItalicActive: isItalicActive ?? this.isItalicActive,
+      isUnderlineActive: isUnderlineActive ?? this.isUnderlineActive,
+    );
+  }
+}
+
+class JournalEditorNotifier extends AutoDisposeNotifier<JournalEditorState> {
+  @override
+  JournalEditorState build() {
+    return const JournalEditorState();
+  }
+
+  void updateTitle(String newTitle) => state = state.copyWith(title: newTitle);
+  void updateContent(String newContent) => state = state.copyWith(content: newContent);
+
+  // --- THE CORE FORMATTING LOGIC ---
+  
+  /// Applies a format to the currently selected text range
+  void applyFormat(TextSelection selection, FormatType type) {
+    if (!selection.isValid || selection.isCollapsed) {
+      // If nothing selected, just toggle the button state for future typing
+      _toggleButtonState(type);
+      return;
+    }
+
+    // Create a new range based on selection
+    final newRange = TextFormatRange(
+      start: selection.start,
+      end: selection.end,
+      type: type,
+    );
+
+    // Add to list (In a real app, you'd merge overlapping ranges here)
+    final updatedFormats = [...state.formats, newRange];
+    
+    state = state.copyWith(formats: updatedFormats);
+  }
+
+  void _toggleButtonState(FormatType type) {
+    switch (type) {
+      case FormatType.bold: state = state.copyWith(isBoldActive: !state.isBoldActive); break;
+      case FormatType.italic: state = state.copyWith(isItalicActive: !state.isItalicActive); break;
+      case FormatType.underline: state = state.copyWith(isUnderlineActive: !state.isUnderlineActive); break;
+      default: break;
+    }
+  }
+
+  /// Call this when opening an existing entry to edit
+  void loadExistingEntry(JournalEntryModel entry) {
+    state = JournalEditorState(
+      title: entry.title ?? '',
+      content: entry.content,
+      formats: entry.formatting, // Load the saved highlights/bolds
+    );
+  }
+  
+  void reset() => state = const JournalEditorState();
+}
+
+final journalEditorProvider = 
+    NotifierProvider.autoDispose<JournalEditorNotifier, JournalEditorState>(
+  () => JournalEditorNotifier(),
+);
+
+final journalControllerProvider = AsyncNotifierProvider<JournalController, void>(() {
   return JournalController();
 });
 
-/// The controller class itself
 class JournalController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {
-    // No initial state needed
+    // No initial async work needed
   }
 
-  /// Adds a new journal entry to Firestore.
-  /// (This is where we'll trigger the AI logic later).
-  Future<void> addJournalEntry(String content) async {
-    // Get the repository and user ID
-    final firestoreRepository = ref.read(firestoreRepositoryProvider);
+  Future<void> saveEntry() async {
     final user = ref.read(firebaseAuthProvider).currentUser;
-    if (user == null) {
-      throw Exception("User is not logged in");
-    }
+    if (user == null) throw Exception("User not logged in");
 
-    // Set state to loading
+    final editorState = ref.read(journalEditorProvider);
+    
+    if (editorState.content.isEmpty && editorState.title.isEmpty) return;
+
     state = const AsyncValue.loading();
 
-    // Create the new entry model
+    final repository = ref.read(firestoreRepositoryProvider);
+    
     final newEntry = JournalEntryModel(
       uid: user.uid,
-      content: content,
-      // `timestamp` is set by the server (in the model)
+      title: editorState.title,
+      content: editorState.content,
+      createdAt: DateTime.now(),
+      // HERE IS THE MAGIC:
+      // We pass the formatting ranges from the UI state to the Model
+      formatting: editorState.formats, 
     );
 
-    // Call the repository
-    state = await AsyncValue.guard(() {
-      return firestoreRepository.addJournalEntry(newEntry);
-      
-      // TODO (when we work back):
-      // After awaiting the add, trigger a cloud function
-      // to process newEntry.id for AI analysis.
+    state = await AsyncValue.guard(() async {
+      await repository.addJournalEntry(newEntry);
+      ref.read(journalEditorProvider.notifier).reset();
     });
   }
 
-  /// Deletes a journal entry from Firestore.
-  Future<void> deleteJournalEntry(JournalEntryModel entry) async {
-    final firestoreRepository = ref.read(firestoreRepositoryProvider);
-    if (entry.id == null) {
-      throw Exception("Entry has no ID");
-    }
-
+  Future<void> deleteEntry(String entryId) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() {
-      return firestoreRepository.deleteJournalEntry(entry.id!);
-    });
+    final repository = ref.read(firestoreRepositoryProvider);
+    state = await AsyncValue.guard(() => repository.deleteJournalEntry(entryId));
   }
 }

@@ -8,8 +8,22 @@ final appThemeProvider = Provider.family<ThemeData, Brightness>((ref, brightness
   // Get the correct color palette by passing the brightness
   final colors = ref.watch(appColorsProvider(brightness));
   
-  final textTheme = GoogleFonts.inclusiveSansTextTheme(
+  // 1. BASE TEXT THEME (Inclusive Sans)
+  // This remains the default for UI elements, buttons, and form inputs.
+  final baseTextTheme = GoogleFonts.inclusiveSansTextTheme(
     ThemeData(brightness: brightness).textTheme,
+  );
+
+  // 2. EDITORIAL TEXT THEME (Serif Integration)
+  // We override the "Headline" and "Display" styles to use Playfair Display.
+  // This gives your Journal titles that elegant, book-like feel automatically.
+  final textTheme = baseTextTheme.copyWith(
+    displayLarge: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.displayLarge),
+    displayMedium: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.displayMedium),
+    displaySmall: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.displaySmall),
+    headlineLarge: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.headlineLarge),
+    headlineMedium: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.headlineMedium),
+    headlineSmall: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.headlineSmall),
   );
 
   final colorScheme = ColorScheme(
@@ -51,7 +65,9 @@ final appThemeProvider = Provider.family<ThemeData, Brightness>((ref, brightness
       ),
     ),
 
-    // --- Text Field Theme (Updated for new palette) ---
+    // --- Text Field Theme (Global Default for Forms/Auth) ---
+    // NOTE: We keep borders here for the Auth/Login screens.
+    // Inside the JournalEntryScreen, we will locally override this to 'InputBorder.none'.
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: colors.surface, // Use the white/dark surface color

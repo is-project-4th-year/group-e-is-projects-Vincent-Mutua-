@@ -11,7 +11,7 @@ import 'package:is_application/presentation/journal/ui/screens/journal_editor_sc
 import 'package:is_application/core/routing/app_shell.dart';
 import 'package:is_application/presentation/home/ui/screens/home_screen.dart';
 import 'package:is_application/presentation/tasks/ui/screens/tasks_screen.dart';
-import 'package:is_application/presentation/journal/ui/screens/journal_screen.dart';
+import 'package:is_application/presentation/journal/ui/screens/journal_entry_screen.dart';
 
 // 1. FIX: Import the FocusScreen
 import 'package:is_application/presentation/focus/ui/screens/focus_screen.dart';
@@ -121,7 +121,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           // Branch 2 (Journal)
           StatefulShellBranch(
             routes: [
-              GoRoute(path: AppRoutes.journal, builder: (context, state) => const JournalScreen()),
+              GoRoute(path: AppRoutes.journal, builder: (context, state) => const JournalEntryScreen()),
             ],
           ),
           
