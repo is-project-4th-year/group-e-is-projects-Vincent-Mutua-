@@ -7,6 +7,7 @@ class JournalActionBar extends ConsumerWidget {
   final VoidCallback onCameraTap;
   final VoidCallback onPenTap;
   final VoidCallback onMicTap;
+  final bool isListening; // NEW
 
   const JournalActionBar({
     super.key,
@@ -14,6 +15,7 @@ class JournalActionBar extends ConsumerWidget {
     required this.onCameraTap, 
     required this.onPenTap, 
     required this.onMicTap,
+    this.isListening = false, // Default to false
   });
 
   @override
@@ -28,6 +30,9 @@ class JournalActionBar extends ConsumerWidget {
         color: journalColors.background, // Blends with page or slightly distinct
         borderRadius: BorderRadius.circular(40),
         border: Border.all(color: journalColors.ink.withOpacity(0.05)),
+        boxShadow: isListening 
+            ? [BoxShadow(color: Colors.red.withOpacity(0.2), blurRadius: 10, spreadRadius: 2)] 
+            : [],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -62,7 +67,10 @@ class JournalActionBar extends ConsumerWidget {
 
           // Mic (Audio)
           IconButton(
-            icon: Icon(Icons.mic_none_outlined, color: journalColors.ink),
+            icon: Icon(
+              isListening ? Icons.mic : Icons.mic_none_outlined, 
+              color: isListening ? Colors.red : journalColors.ink
+            ),
             onPressed: onMicTap,
           ),
         ],

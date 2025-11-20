@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:is_application/presentation/focus/services/spotify_service.dart';
 
 /// The different states a focus session can be in.
 enum SessionStatus {
@@ -17,11 +18,17 @@ class FocusSessionState {
   final Duration totalDuration;
   final Duration remainingDuration;
   final SessionStatus status;
+  final FocusMood selectedMood;
+  final String focusIntent;
+  final bool isMusicPlaying;
 
   const FocusSessionState({
     required this.totalDuration,
     required this.remainingDuration,
     required this.status,
+    required this.selectedMood,
+    this.focusIntent = '',
+    this.isMusicPlaying = false,
   });
 
   /// The default, 25-minute "Pomodoro" state.
@@ -31,6 +38,9 @@ class FocusSessionState {
       totalDuration: defaultDuration,
       remainingDuration: defaultDuration,
       status: SessionStatus.initial,
+      selectedMood: FocusMood.work,
+      focusIntent: '',
+      isMusicPlaying: false,
     );
   }
 
@@ -39,11 +49,17 @@ class FocusSessionState {
     Duration? totalDuration,
     Duration? remainingDuration,
     SessionStatus? status,
+    FocusMood? selectedMood,
+    String? focusIntent,
+    bool? isMusicPlaying,
   }) {
     return FocusSessionState(
       totalDuration: totalDuration ?? this.totalDuration,
       remainingDuration: remainingDuration ?? this.remainingDuration,
       status: status ?? this.status,
+      selectedMood: selectedMood ?? this.selectedMood,
+      focusIntent: focusIntent ?? this.focusIntent,
+      isMusicPlaying: isMusicPlaying ?? this.isMusicPlaying,
     );
   }
 }
@@ -58,6 +74,18 @@ class FocusSessionNotifier extends StateNotifier<FocusSessionState> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  void setMood(FocusMood mood) {
+    state = state.copyWith(selectedMood: mood);
+  }
+
+  void setIntent(String intent) {
+    state = state.copyWith(focusIntent: intent);
+  }
+
+  void toggleMusic() {
+    state = state.copyWith(isMusicPlaying: !state.isMusicPlaying);
   }
 
   /// Starts a new session or resumes a paused one.

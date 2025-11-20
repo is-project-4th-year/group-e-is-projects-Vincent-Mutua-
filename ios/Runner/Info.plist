@@ -49,5 +49,14 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>We need access to your microphone for voice journaling.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>We need access to speech recognition to transcribe your journal entries.</string>
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>spotify</string>
+			<string>https</string>
+		</array>
 	</dict>
 </plist>

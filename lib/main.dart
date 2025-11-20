@@ -4,6 +4,7 @@ import 'package:is_application/core/routing/app_router.dart';
 import 'package:is_application/core/theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:is_application/core/services/notification_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -14,6 +15,10 @@ void main() async {
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.playIntegrity,
   );
+
+  // Initialize Notifications
+  final notificationService = NotificationService();
+  await notificationService.init();
 
   runApp(
     const ProviderScope(

@@ -8,7 +8,9 @@ class JournalEntryModel {
   final String content;
   final DateTime createdAt;
   // NEW FIELD: Stores the formatting data
-  final List<TextFormatRange> formatting; 
+  final List<TextFormatRange> formatting;
+  // NEW FIELD: Stores image URLs
+  final List<String> images;
 
   JournalEntryModel({
     this.id,
@@ -17,6 +19,7 @@ class JournalEntryModel {
     required this.content,
     required this.createdAt,
     this.formatting = const [], // Default to empty list
+    this.images = const [], // Default to empty list
   });
 
   // --- FIRESTORE CONVERSION ---
@@ -29,21 +32,37 @@ class JournalEntryModel {
       'createdAt': Timestamp.fromDate(createdAt),
       // Convert List of Objects -> List of Maps
       'formatting': formatting.map((range) => range.toMap()).toList(),
+      'images': images,
     };
   }
 
   factory JournalEntryModel.fromMap(Map<String, dynamic> map, String documentId) {
+    // Robust Date Handling: Check 'createdAt', then 'timestamp', then fallback
+    DateTime createdDate;
+    try {
+      if (map['createdAt'] != null) {
+        createdDate = (map['createdAt'] as Timestamp).toDate();
+      } else if (map['timestamp'] != null) {
+        createdDate = (map['timestamp'] as Timestamp).toDate();
+      } else {
+        createdDate = DateTime.now();
+      }
+    } catch (e) {
+      createdDate = DateTime.now();
+    }
+
     return JournalEntryModel(
       id: documentId,
       uid: map['uid'] ?? '',
       title: map['title'],
       content: map['content'] ?? '',
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: createdDate,
       // Convert List of Maps -> List of Objects
       formatting: (map['formatting'] as List<dynamic>?)
               ?.map((item) => TextFormatRange.fromMap(item as Map<String, dynamic>))
               .toList() ??
           [],
+      images: List<String>.from(map['images'] ?? []),
     );
   }
 }

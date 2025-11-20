@@ -71,6 +71,7 @@ final appThemeProvider = Provider.family<ThemeData, Brightness>((ref, brightness
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: colors.surface, // Use the white/dark surface color
+      hintStyle: TextStyle(color: colors.onSurface.withOpacity(0.5)), // More visible placeholders
       contentPadding: const EdgeInsets.symmetric(
         vertical: 18.0,
         horizontal: 20.0,

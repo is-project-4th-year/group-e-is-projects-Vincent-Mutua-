@@ -5,7 +5,7 @@ import 'package:is_application/core/models/journal_entry_model.dart';
 import 'package:is_application/core/theme/app_colors.dart';
 import 'package:is_application/presentation/journal/providers/journal_provider.dart';
 import 'package:is_application/presentation/journal/ui/screens/journal_entry_screen.dart';
-import 'package:is_application/presentation/journal/ui/widgets/journal_card.dart';
+import 'package:is_application/presentation/journal/ui/widgets/journal_card.dart'; // Ensure this is imported
 
 class JournalListScreen extends ConsumerWidget {
   const JournalListScreen({super.key});

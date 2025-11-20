@@ -1,11 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:is_application/core/theme/app_colors.dart';
 import 'package:is_application/presentation/journal/providers/journal_provider.dart';
 import 'package:is_application/presentation/journal/ui/widgets/formatting_toolbar.dart';
 import 'package:is_application/presentation/journal/ui/widgets/journal_action_bar.dart';
 import 'package:is_application/presentation/journal/data/models/text_format_range.dart'; // NEW
 import 'package:is_application/presentation/journal/ui/controllers/journal_editing_controller.dart'; // NEW
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class JournalEntryScreen extends ConsumerStatefulWidget {
   const JournalEntryScreen({super.key});
@@ -20,6 +24,14 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
   late TextEditingController _titleController;
   late JournalEditingController _contentController; // CHANGE 1: Use Custom Controller
   final FocusNode _contentFocusNode = FocusNode();
+  
+  // Speech to Text
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  String _textBeforeListening = '';
+
+  // Text to Speech
+  late FlutterTts _flutterTts;
 
   @override
   void initState() {
@@ -27,6 +39,9 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     final state = ref.read(journalEditorProvider);
     _titleController = TextEditingController(text: state.title);
     // Content controller is initialized in build to react to theme/state changes
+    
+    _speech = stt.SpeechToText();
+    _flutterTts = FlutterTts();
   }
 
   @override
@@ -34,6 +49,7 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     _titleController.dispose();
     _contentController.dispose();
     _contentFocusNode.dispose();
+    _flutterTts.stop();
     super.dispose();
   }
 
@@ -75,7 +91,7 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header Row (Title + Minimize)
+                    // Header Row (Title + Actions)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -92,27 +108,87 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                                 ),
                             decoration: InputDecoration(
                               hintText: "Title your story...",
-                              hintStyle: TextStyle(color: journalColors.ink.withOpacity(0.3)),
+                              hintStyle: TextStyle(color: journalColors.ink.withOpacity(0.8)),
                               border: InputBorder.none,
                               focusedBorder: InputBorder.none,
                               enabledBorder: InputBorder.none,
+                              errorBorder: InputBorder.none,
+                              disabledBorder: InputBorder.none,
                               contentPadding: EdgeInsets.zero,
+                              filled: false, // Ensure no background fill
                             ),
                           ),
                         ),
-                        // Minimize / Back Button
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: CircleAvatar(
-                            backgroundColor: journalColors.accent,
-                            radius: 16,
-                            child: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
-                          ),
+                        // Actions Row
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Read Aloud (TTS)
+                            IconButton(
+                              icon: Icon(Icons.volume_up_outlined, color: journalColors.ink.withOpacity(0.6)),
+                              onPressed: _readAloud,
+                              tooltip: "Read Aloud",
+                            ),
+                            if (editorState.id != null)
+                              IconButton(
+                                icon: Icon(Icons.delete_outline, color: journalColors.ink.withOpacity(0.8)),
+                                onPressed: () => _confirmDelete(context, editorState.id!),
+                              ),
+                            const SizedBox(width: 4),
+                            // Save Button
+                            IconButton(
+                              icon: CircleAvatar(
+                                backgroundColor: journalColors.accent.withOpacity(0.1),
+                                radius: 16,
+                                child: Icon(Icons.check, color: journalColors.accent, size: 18),
+                              ),
+                              onPressed: () async {
+                                await ref.read(journalControllerProvider.notifier).saveEntry();
+                                if (context.mounted) Navigator.of(context).pop();
+                              },
+                              tooltip: "Save",
+                            ),
+                            const SizedBox(width: 8),
+                            // Minimize / Back Button
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: CircleAvatar(
+                                backgroundColor: Colors.grey.withOpacity(0.2),
+                                radius: 16,
+                                child: Icon(Icons.keyboard_arrow_down, color: journalColors.ink, size: 20),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                     
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
+
+                    // Image Gallery (Updated Layout)
+                    if (editorState.imageUrls.isNotEmpty || editorState.localImages.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 1.0,
+                          ),
+                          itemCount: editorState.imageUrls.length + editorState.localImages.length,
+                          itemBuilder: (context, index) {
+                            if (index < editorState.imageUrls.length) {
+                              return _buildImageThumbnail(url: editorState.imageUrls[index], isLocal: false);
+                            } else {
+                              final localIndex = index - editorState.imageUrls.length;
+                              return _buildImageThumbnail(file: editorState.localImages[localIndex], isLocal: true);
+                            }
+                          },
+                        ),
+                      ),
 
                     // The Main Body Input
                     TextField(
@@ -130,12 +206,15 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                       decoration: InputDecoration(
                         hintText: "Keep your story unfolding. Just tap to continue!",
                         hintStyle: TextStyle(
-                            color: journalColors.ink.withOpacity(0.3),
+                            color: journalColors.ink.withOpacity(0.9),
                             fontStyle: FontStyle.italic),
                         border: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         enabledBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
+                        filled: false, // Ensure no background fill
                       ),
                     ),
                   ],
@@ -174,23 +253,18 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
               right: 0,
               child: Center(
                 child: JournalActionBar(
+                  isListening: _isListening, // Pass state
                   onClose: () {
                     // Trigger Save and Close
                     ref.read(journalControllerProvider.notifier).saveEntry();
                     Navigator.of(context).pop();
                   },
-                  onCameraTap: () {
-                    // TODO: Connect to Image Picker
-                    print("Open Camera");
-                  },
+                  onCameraTap: _showImagePickerOptions,
                   onPenTap: () {
-                    // TODO: Toggle Draw Mode
+                    // Toggle Draw Mode or just focus
                     _contentFocusNode.requestFocus();
                   },
-                  onMicTap: () {
-                    // TODO: Connect to Speech-to-Text
-                    print("Start Recording");
-                  },
+                  onMicTap: _toggleListening, // Connect STT
                 ),
               ),
             ),
@@ -209,9 +283,168 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     );
   }
 
+  Widget _buildImageThumbnail({String? url, XFile? file, required bool isLocal}) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: isLocal
+              ? Image.file(File(file!.path), fit: BoxFit.cover)
+              : Image.network(url!, fit: BoxFit.cover),
+        ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: GestureDetector(
+            onTap: () {
+              if (isLocal) {
+                ref.read(journalEditorProvider.notifier).removeLocalImage(file!);
+              } else {
+                ref.read(journalEditorProvider.notifier).removeImageUrl(url!);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+              child: const Icon(Icons.close, color: Colors.white, size: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showImagePickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery (Multiple)'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImages(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Camera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImages(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImages(ImageSource source) async {
+    final picker = ImagePicker();
+    if (source == ImageSource.gallery) {
+      final pickedFiles = await picker.pickMultiImage();
+      if (pickedFiles.isNotEmpty) {
+        ref.read(journalEditorProvider.notifier).addLocalImages(pickedFiles);
+      }
+    } else {
+      final pickedFile = await picker.pickImage(source: source);
+      if (pickedFile != null) {
+        ref.read(journalEditorProvider.notifier).addLocalImage(pickedFile);
+      }
+    }
+  }
+
+  Future<void> _readAloud() async {
+    await _flutterTts.speak("${_titleController.text}. ${_contentController.text}");
+  }
+
   // Helper to bridge UI -> Provider
   void _applyFormat(FormatType type) {
     final selection = _contentController.selection;
     ref.read(journalEditorProvider.notifier).applyFormat(selection, type);
+  }
+
+  Future<void> _toggleListening() async {
+    if (!_isListening) {
+      // Initialize Speech Service (Requests permission automatically)
+      bool available = await _speech.initialize(
+        onStatus: (status) {
+          print('Speech Status: $status'); // Debug log
+          if (status == 'notListening' || status == 'done') {
+            setState(() => _isListening = false);
+          }
+        },
+        onError: (errorNotification) {
+          print('Speech Error: ${errorNotification.errorMsg}'); // Debug log
+          setState(() => _isListening = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${errorNotification.errorMsg}')),
+          );
+        },
+        debugLogging: true, // Enable debug logging
+      );
+
+      if (available) {
+        setState(() {
+          _isListening = true;
+          _textBeforeListening = _contentController.text; // Capture current text
+        });
+        
+        _speech.listen(
+          onResult: (result) {
+            // Real-time update: Combine original text with current recognized words
+            // We add a space if there was previous text
+            final prefix = _textBeforeListening.isNotEmpty ? "$_textBeforeListening " : "";
+            final newText = "$prefix${result.recognizedWords}";
+            
+            // Update Provider immediately to show results in real-time
+            ref.read(journalEditorProvider.notifier).updateContent(newText);
+          },
+          listenFor: const Duration(minutes: 5), // Listen longer
+          pauseFor: const Duration(seconds: 5), // Allow pauses
+          partialResults: true, // Enable real-time feedback
+          cancelOnError: true,
+          listenMode: stt.ListenMode.dictation, // Optimize for dictation
+        );
+      } else {
+        print("Speech initialization failed");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Speech recognition not available. Please enable microphone permissions in settings.')),
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
+  Future<void> _confirmDelete(BuildContext context, String entryId) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Entry?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete == true) {
+      await ref.read(journalControllerProvider.notifier).deleteEntry(entryId);
+      if (mounted) Navigator.of(context).pop();
+    }
   }
 }

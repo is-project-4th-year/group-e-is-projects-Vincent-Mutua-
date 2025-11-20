@@ -12,7 +12,7 @@ abstract class FirestoreRepository {
 
   // --- Task Methods ---
   Stream<List<TaskModel>> watchTasks(String uid);
-  Future<void> addTask(TaskModel task);
+  Future<String> addTask(TaskModel task);
   Future<void> updateTask(String taskId, Map<String, dynamic> data);
   Future<void> deleteTask(String taskId);
   
@@ -69,9 +69,10 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
   }
 
   @override
-  Future<void> addTask(TaskModel task) async {
+  Future<String> addTask(TaskModel task) async {
     try {
-      await _tasksCollection.add(task.toJson());
+      final docRef = await _tasksCollection.add(task.toJson());
+      return docRef.id;
     } on FirebaseException catch (e) {
       throw Exception('Error adding task: ${e.message}');
     }
@@ -102,15 +103,19 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
     try {
       return _journalCollection
           .where('uid', isEqualTo: uid)
-          // FIXED: Changed 'timestamp' to 'createdAt' to match the Model
-          .orderBy('createdAt', descending: true) 
+          // NOTE: We sort in memory to avoid needing a composite index on (uid, createdAt)
+          // .orderBy('createdAt', descending: true) 
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          // FIXED: Use .data() and .id separately to use .fromMap()
+        final entries = snapshot.docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
           return JournalEntryModel.fromMap(data, doc.id);
         }).toList();
+
+        // Sort by Date (Newest First)
+        entries.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        
+        return entries;
       });
     } on FirebaseException catch (e) {
       throw Exception('Error watching journal entries: ${e.message}');

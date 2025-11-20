@@ -7,14 +7,14 @@ import 'package:is_application/presentation/auth/ui/screens/login_screen.dart';
 import 'package:is_application/presentation/auth/ui/screens/signup_details_screen.dart';
 import 'package:is_application/presentation/auth/ui/screens/signup_screen.dart';
 import 'package:is_application/presentation/auth/ui/screens/verification_screen.dart';
-import 'package:is_application/presentation/journal/ui/screens/journal_editor_screen.dart';
+import 'package:is_application/presentation/journal/ui/screens/journal_list_screen.dart';
 import 'package:is_application/core/routing/app_shell.dart';
 import 'package:is_application/presentation/home/ui/screens/home_screen.dart';
 import 'package:is_application/presentation/tasks/ui/screens/tasks_screen.dart';
-import 'package:is_application/presentation/journal/ui/screens/journal_entry_screen.dart';
 
 // 1. FIX: Import the FocusScreen
 import 'package:is_application/presentation/focus/ui/screens/focus_screen.dart';
+import 'package:is_application/presentation/chat/ui/chat_screen.dart';
 
 // 2. Define your route paths as constants
 class AppRoutes {
@@ -31,9 +31,10 @@ class AppRoutes {
   
   // 2. FIX: Add the Focus route constant
   static const String focus = '/focus';
+  static const String chat = '/chat';
   
   // Top-level sub-page
-  static const String journalEditor = '/journal-editor';
+  // static const String journalEditor = '/journal-editor';
 }
 
 // Create the GoRouter provider
@@ -93,9 +94,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.verifyEmail,
         builder: (context, state) => const VerificationScreen(),
       ),
+      
       GoRoute(
-        path: AppRoutes.journalEditor,
-        builder: (context, state) => const JournalEditorScreen(),
+        path: AppRoutes.chat,
+        builder: (context, state) => const ChatScreen(),
       ),
       
       // --- StatefulShellRoute for Persistent Bottom Navigation ---
@@ -121,7 +123,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           // Branch 2 (Journal)
           StatefulShellBranch(
             routes: [
-              GoRoute(path: AppRoutes.journal, builder: (context, state) => const JournalEntryScreen()),
+              GoRoute(path: AppRoutes.journal, builder: (context, state) => const JournalListScreen()),
             ],
           ),
           

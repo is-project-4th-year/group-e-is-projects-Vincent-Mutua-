@@ -1,5 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum TaskPriority {
+  low,
+  medium,
+  high,
+}
+
 /// Represents a single sub-task within a main task.
 class SubTask {
   final String title;
@@ -36,6 +42,10 @@ class TaskModel {
   final Timestamp? createdAt;
   final Timestamp? dueDate;
   final String? projectId;
+  final String? category;
+  final TaskPriority priority;
+  final Timestamp? reminderAt;
+  final int? notificationId;
   final List<SubTask> subTasks;
 
   TaskModel({
@@ -46,6 +56,10 @@ class TaskModel {
     this.createdAt,
     this.dueDate,
     this.projectId,
+    this.category,
+    this.priority = TaskPriority.medium,
+    this.reminderAt,
+    this.notificationId,
     this.subTasks = const [],
   });
 
@@ -59,6 +73,10 @@ class TaskModel {
       'createdAt': createdAt ?? FieldValue.serverTimestamp(),
       'dueDate': dueDate,
       'projectId': projectId,
+      'category': category,
+      'priority': priority.index, // Store enum as int
+      'reminderAt': reminderAt,
+      'notificationId': notificationId,
       // Convert list of SubTask objects to a list of maps
       'subTasks': subTasks.map((subtask) => subtask.toJson()).toList(),
     };
@@ -73,6 +91,21 @@ class TaskModel {
         ?.map((item) => SubTask.fromJson(item as Map<String, dynamic>))
         .toList() ?? [];
 
+    // Safe priority parsing
+    TaskPriority priority = TaskPriority.medium;
+    if (data['priority'] is int) {
+      final index = data['priority'] as int;
+      if (index >= 0 && index < TaskPriority.values.length) {
+        priority = TaskPriority.values[index];
+      }
+    } else if (data['priority'] is String) {
+      // Handle case where priority was stored as a String "0", "1", "2"
+      final index = int.tryParse(data['priority'] as String);
+      if (index != null && index >= 0 && index < TaskPriority.values.length) {
+        priority = TaskPriority.values[index];
+      }
+    }
+
     return TaskModel(
       id: doc.id,
       uid: data['uid'] as String,
@@ -81,6 +114,10 @@ class TaskModel {
       createdAt: data['createdAt'] as Timestamp?,
       dueDate: data['dueDate'] as Timestamp?,
       projectId: data['projectId'] as String?,
+      category: data['category'] as String?,
+      priority: priority,
+      reminderAt: data['reminderAt'] as Timestamp?,
+      notificationId: data['notificationId'] as int?,
       subTasks: subTasksList,
     );
   }
@@ -94,6 +131,10 @@ class TaskModel {
     Timestamp? createdAt,
     Timestamp? dueDate,
     String? projectId,
+    String? category,
+    TaskPriority? priority,
+    Timestamp? reminderAt,
+    int? notificationId,
     List<SubTask>? subTasks,
   }) {
     return TaskModel(
@@ -104,7 +145,16 @@ class TaskModel {
       createdAt: createdAt ?? this.createdAt,
       dueDate: dueDate ?? this.dueDate,
       projectId: projectId ?? this.projectId,
+      category: category ?? this.category,
+      priority: priority ?? this.priority,
+      reminderAt: reminderAt ?? this.reminderAt,
+      notificationId: notificationId ?? this.notificationId,
       subTasks: subTasks ?? this.subTasks,
     );
+  }
+
+  @override
+  String toString() {
+    return 'TaskModel(id: $id, title: $title, isCompleted: $isCompleted, priority: $priority, reminderAt: $reminderAt)';
   }
 }
