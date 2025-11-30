@@ -8,10 +8,12 @@ enum TaskPriority {
 
 /// Represents a single sub-task within a main task.
 class SubTask {
+  final String id;
   final String title;
   final bool isCompleted;
 
   SubTask({
+    required this.id,
     required this.title,
     this.isCompleted = false,
   });
@@ -19,6 +21,7 @@ class SubTask {
   /// Converts this [SubTask] to a JSON map.
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'title': title,
       'isCompleted': isCompleted,
     };
@@ -27,6 +30,7 @@ class SubTask {
   /// Creates a [SubTask] from a JSON map.
   factory SubTask.fromJson(Map<String, dynamic> json) {
     return SubTask(
+      id: json['id'] as String? ?? DateTime.now().millisecondsSinceEpoch.toString(), // Fallback for old data
       title: json['title'] as String,
       isCompleted: json['isCompleted'] as bool,
     );
@@ -41,12 +45,20 @@ class TaskModel {
   final bool isCompleted;
   final Timestamp? createdAt;
   final Timestamp? dueDate;
+  final Timestamp? startDate; // New: For Deep Work tasks
+  final Timestamp? completedAt; // New: For Analytics
   final String? projectId;
   final String? category;
   final TaskPriority priority;
   final Timestamp? reminderAt;
   final int? notificationId;
   final List<SubTask> subTasks;
+  
+  // Tiimo-like Visual Fields
+  final int? color; // Color value (0xFF...)
+  final String? icon; // Icon name or code point
+  final int? durationMinutes; // For visual timeline blocking
+  final String? recurrenceRule; // RRULE string for repeating tasks
 
   TaskModel({
     this.id,
@@ -55,12 +67,18 @@ class TaskModel {
     this.isCompleted = false,
     this.createdAt,
     this.dueDate,
+    this.startDate,
+    this.completedAt,
     this.projectId,
     this.category,
     this.priority = TaskPriority.medium,
     this.reminderAt,
     this.notificationId,
     this.subTasks = const [],
+    this.color,
+    this.icon,
+    this.durationMinutes,
+    this.recurrenceRule,
   });
 
   /// Converts this [TaskModel] to a JSON map for Firestore.
@@ -72,6 +90,8 @@ class TaskModel {
       // Use serverTimestamp for reliable, non-local time
       'createdAt': createdAt ?? FieldValue.serverTimestamp(),
       'dueDate': dueDate,
+      'startDate': startDate,
+      'completedAt': completedAt,
       'projectId': projectId,
       'category': category,
       'priority': priority.index, // Store enum as int
@@ -79,6 +99,10 @@ class TaskModel {
       'notificationId': notificationId,
       // Convert list of SubTask objects to a list of maps
       'subTasks': subTasks.map((subtask) => subtask.toJson()).toList(),
+      'color': color,
+      'icon': icon,
+      'durationMinutes': durationMinutes,
+      'recurrenceRule': recurrenceRule,
     };
   }
 
@@ -113,12 +137,18 @@ class TaskModel {
       isCompleted: data['isCompleted'] as bool,
       createdAt: data['createdAt'] as Timestamp?,
       dueDate: data['dueDate'] as Timestamp?,
+      startDate: data['startDate'] as Timestamp?,
+      completedAt: data['completedAt'] as Timestamp?,
       projectId: data['projectId'] as String?,
       category: data['category'] as String?,
       priority: priority,
       reminderAt: data['reminderAt'] as Timestamp?,
       notificationId: data['notificationId'] as int?,
       subTasks: subTasksList,
+      color: data['color'] as int?,
+      icon: data['icon'] as String?,
+      durationMinutes: data['durationMinutes'] as int?,
+      recurrenceRule: data['recurrenceRule'] as String?,
     );
   }
 
@@ -130,12 +160,18 @@ class TaskModel {
     bool? isCompleted,
     Timestamp? createdAt,
     Timestamp? dueDate,
+    Timestamp? startDate,
+    Timestamp? completedAt,
     String? projectId,
     String? category,
     TaskPriority? priority,
     Timestamp? reminderAt,
     int? notificationId,
     List<SubTask>? subTasks,
+    int? color,
+    String? icon,
+    int? durationMinutes,
+    String? recurrenceRule,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -144,12 +180,18 @@ class TaskModel {
       isCompleted: isCompleted ?? this.isCompleted,
       createdAt: createdAt ?? this.createdAt,
       dueDate: dueDate ?? this.dueDate,
+      startDate: startDate ?? this.startDate,
+      completedAt: completedAt ?? this.completedAt,
       projectId: projectId ?? this.projectId,
       category: category ?? this.category,
       priority: priority ?? this.priority,
       reminderAt: reminderAt ?? this.reminderAt,
       notificationId: notificationId ?? this.notificationId,
       subTasks: subTasks ?? this.subTasks,
+      color: color ?? this.color,
+      icon: icon ?? this.icon,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      recurrenceRule: recurrenceRule ?? this.recurrenceRule,
     );
   }
 

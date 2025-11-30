@@ -54,6 +54,11 @@ class TasksPalette {
   final Color priorityHigh;
   final Color priorityMedium;
   final Color priorityLow;
+  
+  // Category Colors
+  final Color categoryWork;
+  final Color categoryPersonal;
+  final Color categorySchool;
 
   const TasksPalette({
     required this.background,
@@ -64,6 +69,30 @@ class TasksPalette {
     required this.priorityHigh,
     required this.priorityMedium,
     required this.priorityLow,
+    required this.categoryWork,
+    required this.categoryPersonal,
+    required this.categorySchool,
+  });
+}
+
+/// A dedicated grouping for the Chat Feature colors.
+class ChatPalette {
+  final Color background; // Main background
+  final Color userBubble; // User message background
+  final Color botBubble;  // Bot message background
+  final Color userText;   // User message text
+  final Color botText;    // Bot message text
+  final Color inputBar;   // Input area background
+  final Color accent;     // Send button / Icons
+
+  const ChatPalette({
+    required this.background,
+    required this.userBubble,
+    required this.botBubble,
+    required this.userText,
+    required this.botText,
+    required this.inputBar,
+    required this.accent,
   });
 }
 
@@ -72,6 +101,9 @@ abstract class AppColors {
   // --- FEATURE: JOURNAL ---
   // Access this via `colors.journal.background`
   JournalPalette get journal;
+
+  // --- FEATURE: CHAT ---
+  ChatPalette get chat;
 
   // --- FEATURE: FOCUS ---
   FocusPalette get focus;
@@ -84,6 +116,10 @@ abstract class AppColors {
   Color get primaryLight;  // Lighter shade for accents
   Color get primaryDark;   // Darker shade for text/dark mode
   Color get onPrimary;     // Text on primary color
+  
+  // --- Gradients ---
+  LinearGradient get primaryGradient; // Main brand gradient
+  LinearGradient get surfaceGradient; // Subtle surface gradient
 
   // --- Background/Hierarchy ---
   Color get background;    // General App background
@@ -101,63 +137,93 @@ abstract class AppColors {
 }
 
 /// Concrete implementation of [AppColors] for LIGHT mode
+/// ADHD-Friendly: Warm, low-glare backgrounds, distinct but pastel accents.
 class AppColorsLight implements AppColors {
   
-  // --- JOURNAL PALETTE (Your Custom Colors) ---
+  // --- JOURNAL PALETTE (Warm, Paper-like) ---
   @override
   JournalPalette get journal => const JournalPalette(
-    background: Color(0xFFFFF7EC), // Warm Cream Paper
-    accent:     Color(0xFFF0CEA0), // Tan/Orange Highlight
-    ink:        Color(0xFF0F0F0F), // Near Black Text
-    surface:    Color(0xFFFFFFFF), // Pure White (Toolbars)
-    canvas:     Color(0xFFF5F5F5), // Light Grey (Bottom areas)
+    background: Color(0xFFFFFBF0), // Creamy Paper
+    accent:     Color(0xFFD97706), // Warm Amber
+    ink:        Color(0xFF292524), // Warm Charcoal
+    surface:    Color(0xFFFFFFFF), 
+    canvas:     Color(0xFFF5F0E6), 
   );
 
-  // --- FOCUS PALETTE ---
+  // --- CHAT PALETTE (Clean, Modern) ---
+  @override
+  ChatPalette get chat => const ChatPalette(
+    background: Color(0xFFF8FAFC), // Very light slate
+    userBubble: Color(0xFF4F46E5), // Premium Indigo
+    botBubble:  Color(0xFFFFFFFF), 
+    userText:   Color(0xFFFFFFFF), 
+    botText:    Color(0xFF1E293B), // Slate 800
+    inputBar:   Color(0xFFFFFFFF), 
+    accent:     Color(0xFF4F46E5), 
+  );
+
+  // --- FOCUS PALETTE (Deep, Immersive) ---
   @override
   FocusPalette get focus => const FocusPalette(
-    background: Color(0xFF121212), // Deep Dark Grey
-    timer:      Color(0xFFE0E0E0), // Off-White
-    accent:     Color(0xFF00E676), // Neon Green
-    card:       Color(0xFF1E1E1E), // Dark Card
+    background: Color(0xFF18181B), // Zinc 900
+    timer:      Color(0xFFE4E4E7), // Zinc 200
+    accent:     Color(0xFF34D399), // Emerald 400
+    card:       Color(0xFF27272A), // Zinc 800
   );
 
-  // --- TASKS PALETTE ---
+  // --- TASKS PALETTE (Productive, Crisp) ---
   @override
   TasksPalette get tasks => const TasksPalette(
-    background: Color(0xFFF8FAFC), // Slate 50 (Clean White/Grey)
-    surface:    Color(0xFFFFFFFF), // Pure White
-    textPrimary: Color(0xFF1E293B), // Slate 800
-    textSecondary: Color(0xFF64748B), // Slate 500
+    background: Color(0xFFF9FAFB), // Gray 50
+    surface:    Color(0xFFFFFFFF), 
+    textPrimary: Color(0xFF111827), // Gray 900
+    textSecondary: Color(0xFF6B7280), // Gray 500
     accent:     Color(0xFF6366F1), // Indigo 500
     priorityHigh: Color(0xFFEF4444), // Red 500
     priorityMedium: Color(0xFFF59E0B), // Amber 500
     priorityLow: Color(0xFF3B82F6), // Blue 500
+    categoryWork: Color(0xFF818CF8), 
+    categoryPersonal: Color(0xFF34D399), 
+    categorySchool: Color(0xFFFBBF24), 
   );
 
-  // --- STANDARD APP PALETTE (The Existing Blue Theme) ---
+  // --- STANDARD APP PALETTE ---
   @override
-  Color get primary => const Color(0xFF3B82F6);       // Strong Blue
+  Color get primary => const Color(0xFF4F46E5);       // Indigo 600
   @override
-  Color get primaryLight => const Color(0xFF60A5FA);  // Lighter Blue
+  Color get primaryLight => const Color(0xFFE0E7FF);  // Indigo 100
   @override
-  Color get primaryDark => const Color(0xFF1E3A8A);   // Dark Navy Blue
+  Color get primaryDark => const Color(0xFF3730A3);   // Indigo 800
   @override
-  Color get onPrimary => const Color(0xFFFFFFFF);     // White text
+  Color get onPrimary => const Color(0xFFFFFFFF);     
 
   @override
-  Color get background => const Color(0xFFEBF8FF);    // Very Light Blue
-  @override
-  Color get onBackground => const Color(0xFF1E3A8A);  // Dark Navy text
-  @override
-  Color get surface => const Color(0xFFFFFFFF);       // White cards
-  @override
-  Color get onSurface => const Color(0xFF1E3A8A);     // Dark Navy text
-  @override
-  Color get border => const Color(0xFF60A5FA).withAlpha(128); 
+  LinearGradient get primaryGradient => const LinearGradient(
+    colors: [Color(0xFF4F46E5), Color(0xFF4338CA)], 
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   @override
-  Color get error => const Color(0xFFD32F2F);
+  LinearGradient get surfaceGradient => const LinearGradient(
+    colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFC)], 
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
+  @override
+  Color get background => const Color(0xFFF9FAFB);    
+  @override
+  Color get onBackground => const Color(0xFF111827);  
+  @override
+  Color get surface => const Color(0xFFFFFFFF);       
+  @override
+  Color get onSurface => const Color(0xFF111827);     
+  @override
+  Color get border => const Color(0xFFE5E7EB);        
+
+  @override
+  Color get error => const Color(0xFFEF4444);         
   @override
   Color get onError => const Color(0xFFFFFFFF);
 
@@ -166,30 +232,41 @@ class AppColorsLight implements AppColors {
 }
 
 /// Concrete implementation of [AppColors] for DARK mode
+/// ADHD-Friendly: Deep, muted tones. Avoids pure black to reduce contrast strain (halation).
 class AppColorsDark implements AppColors {
   
-  // --- JOURNAL PALETTE (Dark Mode Interpretation) ---
-  // Since a bright cream paper will hurt eyes in dark mode, 
-  // we invert the logic to Dark Grey paper + Cream text.
+  // --- JOURNAL PALETTE (Cozy, Dark Mode) ---
   @override
   JournalPalette get journal => const JournalPalette(
-    background: Color.fromARGB(255, 63, 61, 61), 
-    accent:     Color(0xFFD4A86A), // Muted Gold/Tan (Keeps the classic feel)
-    ink:        Color(0xFFE0E0E0), // High Contrast Light Grey/White Text
-    surface:    Color.fromARGB(255, 26, 25, 25), // Slightly lighter grey for toolbars
-    canvas:     Color.fromARGB(255, 39, 38, 38), // Pure Black canvas
+    background: Color(0xFF1C1917), // Stone 900
+    accent:     Color(0xFFF59E0B), // Amber 500
+    ink:        Color(0xFFE7E5E4), // Stone 200
+    surface:    Color(0xFF292524), // Stone 800
+    canvas:     Color(0xFF0C0A09), // Stone 950
   );
 
-  // --- FOCUS PALETTE (Same as Light for now, Focus is always dark) ---
+  // --- CHAT PALETTE (Sleek, Dark Mode) ---
+  @override
+  ChatPalette get chat => const ChatPalette(
+    background: Color(0xFF111827), // Gray 900
+    userBubble: Color(0xFF6366F1), // Indigo 500
+    botBubble:  Color(0xFF1F2937), // Gray 800
+    userText:   Color(0xFFFFFFFF), 
+    botText:    Color(0xFFF3F4F6), // Gray 100
+    inputBar:   Color(0xFF1F2937), 
+    accent:     Color(0xFF818CF8), // Indigo 400
+  );
+
+  // --- FOCUS PALETTE (Deep, Dark Mode) ---
   @override
   FocusPalette get focus => const FocusPalette(
-    background: Color(0xFF000000), // Pure Black for OLED
-    timer:      Color(0xFFFFFFFF), // Pure White
-    accent:     Color(0xFF69F0AE), // Slightly softer Neon Green
-    card:       Color(0xFF121212), // Very Dark Grey
+    background: Color(0xFF09090B), // Zinc 950
+    timer:      Color(0xFFE4E4E7), // Zinc 200
+    accent:     Color(0xFF34D399), // Emerald 400
+    card:       Color(0xFF18181B), // Zinc 900
   );
 
-  // --- TASKS PALETTE ---
+  // --- TASKS PALETTE (Dark Productivity) ---
   @override
   TasksPalette get tasks => const TasksPalette(
     background: Color(0xFF0F172A), // Slate 900
@@ -200,33 +277,50 @@ class AppColorsDark implements AppColors {
     priorityHigh: Color(0xFFF87171), // Red 400
     priorityMedium: Color(0xFFFBBF24), // Amber 400
     priorityLow: Color(0xFF60A5FA), // Blue 400
+    categoryWork: Color(0xFF6366F1), 
+    categoryPersonal: Color(0xFF34D399), 
+    categorySchool: Color(0xFFFBBF24), 
   );
 
-  // --- STANDARD APP PALETTE (The Existing Dark Theme) ---
+  // --- STANDARD APP PALETTE ---
   @override
-  Color get primary => const Color(0xFF60A5FA);       
+  Color get primary => const Color(0xFF818CF8);       // Indigo 400
   @override
-  Color get primaryLight => const Color(0xFFEBF8FF);  
+  Color get primaryLight => const Color(0xFF3730A3);  // Indigo 800
   @override
-  Color get primaryDark => const Color(0xFF3B82F6);   
+  Color get primaryDark => const Color(0xFF312E81);   // Indigo 900
   @override
-  Color get onPrimary => const Color(0xFF1E3A8A);     
+  Color get onPrimary => const Color(0xFFFFFFFF);     
 
   @override
-  Color get background => const Color(0xFF1E3A8A);   
-  @override
-  Color get onBackground => const Color(0xFFEBF8FF); 
-  @override
-  Color get surface => const Color(0xFF294b9b); 
-  @override
-  Color get onSurface => const Color(0xFFEBF8FF);    
-  @override
-  Color get border => const Color(0xFF3B82F6);       
+  LinearGradient get primaryGradient => const LinearGradient(
+    colors: [Color(0xFF6366F1), Color(0xFF4F46E5)], 
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   @override
-  Color get error => const Color(0xFFEF5350);
+  LinearGradient get surfaceGradient => const LinearGradient(
+    colors: [Color(0xFF1E293B), Color(0xFF0F172A)], 
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
   @override
-  Color get onError => const Color(0xFF1E3A8A);
+  Color get background => const Color(0xFF0F172A);    
+  @override
+  Color get onBackground => const Color(0xFFF1F5F9);  
+  @override
+  Color get surface => const Color(0xFF1E293B);       
+  @override
+  Color get onSurface => const Color(0xFFF1F5F9);     
+  @override
+  Color get border => const Color(0xFF334155);        
+
+  @override
+  Color get error => const Color(0xFFF87171);         
+  @override
+  Color get onError => const Color(0xFFFFFFFF);
 
   @override
   Color get googleButton => const Color(0xFF4285F4);

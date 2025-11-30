@@ -5,25 +5,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 final chatServiceProvider = Provider<ChatService>((ref) => ChatService());
 
 class ChatService {
-  // TODO: Replace with your actual ngrok URL
-  static const String _baseUrl = 'YOUR_NGROK_URL_HERE'; 
+  static const String ngrokUrl = 'https://cathern-disembodied-nondomestically.ngrok-free.dev';
 
   Future<String> sendMessage(String message) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/chat'), // Adjust endpoint as needed
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'message': message}),
+        Uri.parse('$ngrokUrl/chat'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'message': message,
+        }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['response'] ?? 'No response from server';
+        if (data is Map && data.containsKey('response')) {
+          return data['response'].toString();
+        }
+        return "I received a response, but it was empty.";
       } else {
-        throw Exception('Failed to load response: ${response.statusCode}');
+        print('Server Error: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to connect to ngrok server.');
       }
     } catch (e) {
-      throw Exception('Error sending message: $e');
+      print('Chat Error: $e');
+      throw Exception('Failed to connect to AI.');
     }
   }
 }

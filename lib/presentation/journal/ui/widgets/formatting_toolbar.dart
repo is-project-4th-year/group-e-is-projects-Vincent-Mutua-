@@ -33,7 +33,7 @@ class FormattingToolbar extends ConsumerWidget {
         borderRadius: BorderRadius.circular(50),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -125,7 +125,7 @@ class _FormatButton extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: isActive ? activeColor.withOpacity(0.3) : Colors.transparent,
+          color: isActive ? activeColor.withValues(alpha: 0.3) : Colors.transparent,
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,

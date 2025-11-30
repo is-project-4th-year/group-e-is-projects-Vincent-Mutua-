@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_application/core/models/task_model.dart';
@@ -50,8 +52,14 @@ class TasksController extends AsyncNotifier<void> {
     required String title,
     TaskPriority priority = TaskPriority.medium,
     DateTime? dueDate,
+    DateTime? startDate,
     DateTime? reminderAt,
     String? category,
+    List<SubTask> subTasks = const [],
+    int? color,
+    String? icon,
+    int? durationMinutes,
+    String? recurrenceRule,
   }) async {
     // Get the repository and user ID
     final firestoreRepository = ref.read(firestoreRepositoryProvider);
@@ -72,8 +80,14 @@ class TasksController extends AsyncNotifier<void> {
         title: title,
         priority: priority,
         dueDate: dueDate != null ? Timestamp.fromDate(dueDate) : null,
+        startDate: startDate != null ? Timestamp.fromDate(startDate) : null,
         reminderAt: reminderAt != null ? Timestamp.fromDate(reminderAt) : null,
         category: category,
+        subTasks: subTasks,
+        color: color,
+        icon: icon,
+        durationMinutes: durationMinutes,
+        recurrenceRule: recurrenceRule,
         // `createdAt` is set by the server (in the model)
       );
 
@@ -90,7 +104,7 @@ class TasksController extends AsyncNotifier<void> {
         );
 
         // Update task with notification ID
-        await firestoreRepository.updateTask(taskId, {
+        await firestoreRepository.updateTask(user.uid, taskId, {
           'notificationId': notificationId,
         });
       }
@@ -109,8 +123,9 @@ class TasksController extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final newStatus = !task.isCompleted;
-      await firestoreRepository.updateTask(task.id!, {
+      await firestoreRepository.updateTask(task.uid, task.id!, {
         'isCompleted': newStatus,
+        'completedAt': newStatus ? FieldValue.serverTimestamp() : null,
       });
 
       // Cancel notification if completed
@@ -143,7 +158,7 @@ class TasksController extends AsyncNotifier<void> {
 
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await firestoreRepository.deleteTask(task.id!);
+      await firestoreRepository.deleteTask(task.uid, task.id!);
       
       if (task.notificationId != null) {
         await notificationService.cancelNotification(task.notificationId!);
@@ -164,7 +179,7 @@ class TasksController extends AsyncNotifier<void> {
     state = await AsyncValue.guard(() async {
       // We convert the model to JSON, but we exclude fields that shouldn't be updated manually
       // like 'uid' or 'createdAt' if we wanted to be strict, but toJson is fine for now.
-      await firestoreRepository.updateTask(task.id!, task.toJson());
+      await firestoreRepository.updateTask(task.uid, task.id!, task.toJson());
 
       // Handle Notification Logic
       if (task.isCompleted && task.notificationId != null) {
@@ -174,7 +189,7 @@ class TasksController extends AsyncNotifier<void> {
         
         // Ensure ID is saved if it wasn't there
         if (task.notificationId == null) {
-             await firestoreRepository.updateTask(task.id!, {
+             await firestoreRepository.updateTask(task.uid, task.id!, {
                 'notificationId': notificationId,
              });
         }
@@ -189,5 +204,44 @@ class TasksController extends AsyncNotifier<void> {
           await notificationService.cancelNotification(task.notificationId!);
       }
     });
+  }
+
+  /// Generates subtasks for a given task title using an external AI service.
+  Future<List<SubTask>> generateSubtasks(String taskTitle) async {
+   
+    const String baseUrl = 'https://cathern-disembodied-nondomestically.ngrok-free.dev'; 
+    
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/break_down_task'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "data": {
+            "taskTitle": taskTitle
+          }
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final subtaskStrings = List<String>.from(data['data']['subtasks']);
+        
+        // Convert strings to SubTask objects
+        return subtaskStrings.map((title) => SubTask(
+          id: DateTime.now().millisecondsSinceEpoch.toString() + title.hashCode.toString(),
+          title: title,
+          isCompleted: false,
+        )).toList();
+      } else {
+        throw Exception('Failed to generate subtasks: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("AI Error: $e");
+      // Fallback for demo/offline
+      return [
+        SubTask(id: '1', title: 'Start small (AI Offline)', isCompleted: false),
+        SubTask(id: '2', title: 'Check connection', isCompleted: false),
+      ];
+    }
   }
 }

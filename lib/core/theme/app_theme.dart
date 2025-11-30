@@ -3,20 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:is_application/core/theme/app_colors.dart';
 
+// Provider for the ThemeMode (Light, Dark, System)
+final appThemeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
+
 // FIX: Convert to a Provider.family to accept the brightness
 final appThemeProvider = Provider.family<ThemeData, Brightness>((ref, brightness) {
   // Get the correct color palette by passing the brightness
   final colors = ref.watch(appColorsProvider(brightness));
   
-  // 1. BASE TEXT THEME (Inclusive Sans)
+  // 1. BASE TEXT THEME (Inter)
   // This remains the default for UI elements, buttons, and form inputs.
-  final baseTextTheme = GoogleFonts.inclusiveSansTextTheme(
+  // Inter is chosen for its high legibility on screens and modern look.
+  final baseTextTheme = GoogleFonts.interTextTheme(
     ThemeData(brightness: brightness).textTheme,
   );
 
   // 2. EDITORIAL TEXT THEME (Serif Integration)
   // We override the "Headline" and "Display" styles to use Playfair Display.
   // This gives your Journal titles that elegant, book-like feel automatically.
+  // NOTE: Commenting out to enforce Inter across the app for a clean productivity look.
+  // Uncomment if you want to keep the serif headers for the Journal.
+  /*
   final textTheme = baseTextTheme.copyWith(
     displayLarge: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.displayLarge),
     displayMedium: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.displayMedium),
@@ -25,6 +32,8 @@ final appThemeProvider = Provider.family<ThemeData, Brightness>((ref, brightness
     headlineMedium: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.headlineMedium),
     headlineSmall: GoogleFonts.playfairDisplay(textStyle: baseTextTheme.headlineSmall),
   );
+  */
+  final textTheme = baseTextTheme;
 
   final colorScheme = ColorScheme(
     brightness: brightness,
@@ -71,7 +80,7 @@ final appThemeProvider = Provider.family<ThemeData, Brightness>((ref, brightness
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: colors.surface, // Use the white/dark surface color
-      hintStyle: TextStyle(color: colors.onSurface.withOpacity(0.5)), // More visible placeholders
+      hintStyle: TextStyle(color: colors.onSurface.withValues(alpha: 0.5)), // More visible placeholders
       contentPadding: const EdgeInsets.symmetric(
         vertical: 18.0,
         horizontal: 20.0,

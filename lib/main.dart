@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart'; // For kDebugMode
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_application/core/routing/app_router.dart';
 import 'package:is_application/core/theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+// For AppleProvider, use DefaultAppleProvider
 import 'package:is_application/core/services/notification_service.dart';
 import 'firebase_options.dart';
 
@@ -12,8 +14,11 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Enable App Check with debug provider for development
   await FirebaseAppCheck.instance.activate(
-    androidProvider: AndroidProvider.playIntegrity,
+    androidProvider: AndroidProvider.debug,
+    appleProvider: AppleProvider.debug,
   );
 
   // Initialize Notifications
@@ -34,20 +39,19 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(goRouterProvider);
     
-    // 4. FIX: Removed the unused 'brightness' variable
-
-    // 5. Watch the light and dark themes
+    // Watch the light and dark themes
     final lightTheme = ref.watch(appThemeProvider(Brightness.light));
     final darkTheme = ref.watch(appThemeProvider(Brightness.dark));
+    final themeMode = ref.watch(appThemeModeProvider);
 
     return MaterialApp.router(
       title: 'ADHD Support App',
       debugShowCheckedModeBanner: false,
       
-      // 6. Apply the themes
+      // Apply the themes
       theme: lightTheme,
       darkTheme: darkTheme,
-      themeMode: ThemeMode.system, // This respects the device's setting
+      themeMode: themeMode, // This respects the device's setting
       
       routerConfig: router,
     );

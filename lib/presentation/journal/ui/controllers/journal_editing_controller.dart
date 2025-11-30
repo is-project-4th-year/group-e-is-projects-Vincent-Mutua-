@@ -4,14 +4,37 @@ import 'package:is_application/presentation/journal/data/models/text_format_rang
 
 class JournalEditingController extends TextEditingController {
   // The list of styles (Bold ranges, Italic ranges, etc.)
-  final List<TextFormatRange> formattingRanges;
-  final JournalPalette journalColors;
+  List<TextFormatRange> formattingRanges;
+  JournalPalette journalColors;
 
   JournalEditingController({
     required String text,
     required this.formattingRanges,
     required this.journalColors,
   }) : super(text: text);
+
+  void update({
+    required List<TextFormatRange> newRanges,
+    required JournalPalette newColors,
+    String? newText,
+  }) {
+    formattingRanges = newRanges;
+    journalColors = newColors;
+    if (newText != null && newText != text) {
+      // Only update text if it changed externally (e.g. voice input)
+      // We need to be careful not to mess up selection if we are typing
+      // But if text changed, we usually want to update it.
+      // For voice input (append), we want to keep selection or move it to end?
+      // If we are typing, newText should match text (because we updated provider from text).
+      
+      // If the text is different, it means it came from outside (Voice or Load).
+      // We update the value.
+      text = newText;
+      // Move cursor to end for external updates (like voice)
+      selection = TextSelection.fromPosition(TextPosition(offset: text.length));
+    }
+    notifyListeners(); // Trigger rebuild of the text span
+  }
 
   @override
   TextSpan buildTextSpan({

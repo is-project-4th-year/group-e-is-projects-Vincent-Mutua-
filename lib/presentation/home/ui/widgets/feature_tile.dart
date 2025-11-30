@@ -19,7 +19,7 @@ class FeatureTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // We'll use our theme colors
-    final brightness = MediaQuery.of(context).platformBrightness;
+    final brightness = Theme.of(context).brightness;
     final colors = ref.watch(appColorsProvider(brightness));
 
     return Card(
@@ -28,6 +28,7 @@ class FeatureTile extends ConsumerWidget {
       elevation: 0, // A modern, flat design
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16.0),
+        side: BorderSide(color: colors.border.withValues(alpha: 0.5), width: 1),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(
@@ -37,10 +38,17 @@ class FeatureTile extends ConsumerWidget {
         onTap: onTap, // The navigation action
         
         // The Icon on the left
-        leading: Icon(
-          icon,
-          size: 40.0,
-          color: colors.primary, // Use your app's primary color
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: colors.primaryLight.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            size: 32.0,
+            color: colors.primary, // Use your app's primary color
+          ),
         ),
         
         // The Title
@@ -48,19 +56,26 @@ class FeatureTile extends ConsumerWidget {
           title,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: colors.onSurface,
               ),
         ),
         
         // The Subtitle
-        subtitle: Text(
-          subtitle,
-          style: Theme.of(context).textTheme.bodyMedium,
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colors.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
         ),
         
         // A trailing arrow to show it's tappable
-        trailing: const Icon(
+        trailing: Icon(
           Icons.arrow_forward_ios,
           size: 16,
+          color: colors.onSurface.withValues(alpha: 0.5),
         ),
       ),
     );

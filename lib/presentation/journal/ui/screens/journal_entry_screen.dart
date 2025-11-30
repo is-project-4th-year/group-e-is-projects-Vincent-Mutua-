@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,9 +6,11 @@ import 'package:is_application/core/theme/app_colors.dart';
 import 'package:is_application/presentation/journal/providers/journal_provider.dart';
 import 'package:is_application/presentation/journal/ui/widgets/formatting_toolbar.dart';
 import 'package:is_application/presentation/journal/ui/widgets/journal_action_bar.dart';
+import 'package:is_application/presentation/journal/ui/widgets/journal_image_grid.dart';
 import 'package:is_application/presentation/journal/data/models/text_format_range.dart'; // NEW
 import 'package:is_application/presentation/journal/ui/controllers/journal_editing_controller.dart'; // NEW
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:intl/intl.dart';
 
 class JournalEntryScreen extends ConsumerStatefulWidget {
   const JournalEntryScreen({super.key});
@@ -38,7 +39,20 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     super.initState();
     final state = ref.read(journalEditorProvider);
     _titleController = TextEditingController(text: state.title);
-    // Content controller is initialized in build to react to theme/state changes
+    
+    // Initialize with current state and default colors (will be updated in build)
+    // We use a temporary palette until build provides the theme-aware one
+    _contentController = JournalEditingController(
+      text: state.content,
+      formattingRanges: state.formats,
+      journalColors: const JournalPalette(
+        background: Colors.white,
+        surface: Colors.white,
+        ink: Colors.black,
+        accent: Colors.blue,
+        canvas: Colors.grey,
+      ),
+    );
     
     _speech = stt.SpeechToText();
     _flutterTts = FlutterTts();
@@ -59,18 +73,13 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     final appColors = ref.watch(appColorsProvider(brightness));
     final journalColors = appColors.journal;
 
-    // CHANGE 2: Re-construct controller when Provider State changes
+    // CHANGE 2: Update controller instead of recreating it
     final editorState = ref.watch(journalEditorProvider);
     
-    _contentController = JournalEditingController(
-      text: editorState.content,
-      formattingRanges: editorState.formats,
-      journalColors: journalColors,
-    );
-    
-    // Maintain cursor position hack for MVP
-    _contentController.selection = TextSelection.fromPosition(
-       TextPosition(offset: editorState.content.length)
+    _contentController.update(
+      newRanges: editorState.formats,
+      newColors: journalColors,
+      newText: editorState.content,
     );
 
     // Detect keyboard height to position the formatting toolbar
@@ -87,10 +96,22 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
             // -------------------------------------------------------
             Positioned.fill(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 120), // Bottom padding for bars
+                padding: const EdgeInsets.fromLTRB(24, 60, 24, 120), // Increased top padding
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Date Header
+                    Text(
+                      DateFormat('EEEE, MMMM d').format(DateTime.now()),
+                      style: TextStyle(
+                        color: journalColors.ink.withValues(alpha: 0.5),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 24), // Increased spacing
+
                     // Header Row (Title + Actions)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,18 +125,22 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                             maxLines: null,
                             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                                   color: journalColors.ink,
-                                  height: 1.1,
+                                  height: 1.2,
+                                  fontWeight: FontWeight.bold,
                                 ),
                             decoration: InputDecoration(
-                              hintText: "Title your story...",
-                              hintStyle: TextStyle(color: journalColors.ink.withOpacity(0.8)),
+                              hintText: "Title...",
+                              hintStyle: TextStyle(
+                                color: journalColors.ink.withValues(alpha: 0.3),
+                                fontWeight: FontWeight.bold,
+                              ),
                               border: InputBorder.none,
                               focusedBorder: InputBorder.none,
                               enabledBorder: InputBorder.none,
                               errorBorder: InputBorder.none,
                               disabledBorder: InputBorder.none,
                               contentPadding: EdgeInsets.zero,
-                              filled: false, // Ensure no background fill
+                              filled: false,
                             ),
                           ),
                         ),
@@ -125,22 +150,24 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                           children: [
                             // Read Aloud (TTS)
                             IconButton(
-                              icon: Icon(Icons.volume_up_outlined, color: journalColors.ink.withOpacity(0.6)),
+                              icon: Icon(Icons.volume_up_outlined, color: journalColors.ink.withValues(alpha: 0.6)),
                               onPressed: _readAloud,
                               tooltip: "Read Aloud",
                             ),
+                            // Delete Button (Always visible if entry exists)
                             if (editorState.id != null)
                               IconButton(
-                                icon: Icon(Icons.delete_outline, color: journalColors.ink.withOpacity(0.8)),
+                                icon: Icon(Icons.delete_outline, color: Colors.red.withValues(alpha: 0.7)),
                                 onPressed: () => _confirmDelete(context, editorState.id!),
+                                tooltip: "Delete Entry",
                               ),
                             const SizedBox(width: 4),
                             // Save Button
                             IconButton(
                               icon: CircleAvatar(
-                                backgroundColor: journalColors.accent.withOpacity(0.1),
-                                radius: 16,
-                                child: Icon(Icons.check, color: journalColors.accent, size: 18),
+                                backgroundColor: journalColors.accent.withValues(alpha: 0.1),
+                                radius: 18,
+                                child: Icon(Icons.check, color: journalColors.accent, size: 20),
                               ),
                               onPressed: () async {
                                 await ref.read(journalControllerProvider.notifier).saveEntry();
@@ -153,9 +180,9 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                             IconButton(
                               onPressed: () => Navigator.of(context).pop(),
                               icon: CircleAvatar(
-                                backgroundColor: Colors.grey.withOpacity(0.2),
-                                radius: 16,
-                                child: Icon(Icons.keyboard_arrow_down, color: journalColors.ink, size: 20),
+                                backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                                radius: 18,
+                                child: Icon(Icons.keyboard_arrow_down, color: journalColors.ink, size: 22),
                               ),
                             ),
                           ],
@@ -163,58 +190,40 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                       ],
                     ),
                     
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 30),
 
                     // Image Gallery (Updated Layout)
-                    if (editorState.imageUrls.isNotEmpty || editorState.localImages.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 1.0,
-                          ),
-                          itemCount: editorState.imageUrls.length + editorState.localImages.length,
-                          itemBuilder: (context, index) {
-                            if (index < editorState.imageUrls.length) {
-                              return _buildImageThumbnail(url: editorState.imageUrls[index], isLocal: false);
-                            } else {
-                              final localIndex = index - editorState.imageUrls.length;
-                              return _buildImageThumbnail(file: editorState.localImages[localIndex], isLocal: true);
-                            }
-                          },
-                        ),
-                      ),
+                    const JournalImageGrid(),
 
                     // The Main Body Input
-                    TextField(
-                      controller: _contentController,
-                      focusNode: _contentFocusNode,
-                      onChanged: (value) => ref
-                          .read(journalEditorProvider.notifier)
-                          .updateContent(value),
-                      maxLines: null, // Expands infinitely
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: journalColors.ink.withOpacity(0.85),
-                            height: 1.6, // Comfortable reading height
-                            fontSize: 18,
-                          ),
-                      decoration: InputDecoration(
-                        hintText: "Keep your story unfolding. Just tap to continue!",
-                        hintStyle: TextStyle(
-                            color: journalColors.ink.withOpacity(0.9),
-                            fontStyle: FontStyle.italic),
-                        border: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        errorBorder: InputBorder.none,
-                        disabledBorder: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                        filled: false, // Ensure no background fill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10), // Removed container padding/bg for cleaner look
+                      decoration: const BoxDecoration(), // Removed box decoration for cleaner "paper" look
+                      child: TextField(
+                        controller: _contentController,
+                        focusNode: _contentFocusNode,
+                        onChanged: (value) => ref
+                            .read(journalEditorProvider.notifier)
+                            .updateContent(value),
+                        maxLines: null, // Expands infinitely
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: journalColors.ink.withValues(alpha: 0.85),
+                              height: 1.8, // More breathing room
+                              fontSize: 18,
+                            ),
+                        decoration: InputDecoration(
+                          hintText: "Start writing...",
+                          hintStyle: TextStyle(
+                              color: journalColors.ink.withValues(alpha: 0.3),
+                              fontStyle: FontStyle.normal),
+                          border: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                          filled: false,
+                        ),
                       ),
                     ),
                   ],
@@ -283,37 +292,6 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     );
   }
 
-  Widget _buildImageThumbnail({String? url, XFile? file, required bool isLocal}) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: isLocal
-              ? Image.file(File(file!.path), fit: BoxFit.cover)
-              : Image.network(url!, fit: BoxFit.cover),
-        ),
-        Positioned(
-          top: 4,
-          right: 4,
-          child: GestureDetector(
-            onTap: () {
-              if (isLocal) {
-                ref.read(journalEditorProvider.notifier).removeLocalImage(file!);
-              } else {
-                ref.read(journalEditorProvider.notifier).removeImageUrl(url!);
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-              child: const Icon(Icons.close, color: Colors.white, size: 16),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   void _showImagePickerOptions() {
     showModalBottomSheet(
@@ -344,17 +322,26 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
   }
 
   Future<void> _pickImages(ImageSource source) async {
-    final picker = ImagePicker();
-    if (source == ImageSource.gallery) {
-      final pickedFiles = await picker.pickMultiImage();
-      if (pickedFiles.isNotEmpty) {
-        ref.read(journalEditorProvider.notifier).addLocalImages(pickedFiles);
+    try {
+      final picker = ImagePicker();
+      if (source == ImageSource.gallery) {
+        final pickedFiles = await picker.pickMultiImage();
+        print("Picked files: ${pickedFiles.length}");
+        if (pickedFiles.isNotEmpty) {
+          ref.read(journalEditorProvider.notifier).addLocalImages(pickedFiles);
+        }
+      } else {
+        final pickedFile = await picker.pickImage(source: source);
+        print("Picked file: ${pickedFile?.path}");
+        if (pickedFile != null) {
+          ref.read(journalEditorProvider.notifier).addLocalImage(pickedFile);
+        }
       }
-    } else {
-      final pickedFile = await picker.pickImage(source: source);
-      if (pickedFile != null) {
-        ref.read(journalEditorProvider.notifier).addLocalImage(pickedFile);
-      }
+    } catch (e) {
+      print("Error picking images: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking images: $e')),
+      );
     }
   }
 
@@ -396,6 +383,7 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
         
         _speech.listen(
           onResult: (result) {
+            print("Speech Result: ${result.recognizedWords}"); // Debug log
             // Real-time update: Combine original text with current recognized words
             // We add a space if there was previous text
             final prefix = _textBeforeListening.isNotEmpty ? "$_textBeforeListening " : "";
@@ -406,9 +394,11 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
           },
           listenFor: const Duration(minutes: 5), // Listen longer
           pauseFor: const Duration(seconds: 5), // Allow pauses
-          partialResults: true, // Enable real-time feedback
-          cancelOnError: true,
-          listenMode: stt.ListenMode.dictation, // Optimize for dictation
+          listenOptions: stt.SpeechListenOptions(
+            partialResults: true, // Enable real-time feedback
+            cancelOnError: true,
+            listenMode: stt.ListenMode.dictation, // Optimize for dictation
+          ),
         );
       } else {
         print("Speech initialization failed");
@@ -421,6 +411,8 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
       _speech.stop();
     }
   }
+
+
 
   Future<void> _confirmDelete(BuildContext context, String entryId) async {
     final shouldDelete = await showDialog<bool>(
@@ -448,3 +440,4 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     }
   }
 }
+

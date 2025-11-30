@@ -11,6 +11,7 @@ class JournalEntryModel {
   final List<TextFormatRange> formatting;
   // NEW FIELD: Stores image URLs
   final List<String> images;
+  final String? mood;
 
   JournalEntryModel({
     this.id,
@@ -20,6 +21,7 @@ class JournalEntryModel {
     required this.createdAt,
     this.formatting = const [], // Default to empty list
     this.images = const [], // Default to empty list
+    this.mood,
   });
 
   // --- FIRESTORE CONVERSION ---
@@ -33,6 +35,7 @@ class JournalEntryModel {
       // Convert List of Objects -> List of Maps
       'formatting': formatting.map((range) => range.toMap()).toList(),
       'images': images,
+      'mood': mood,
     };
   }
 
@@ -63,6 +66,7 @@ class JournalEntryModel {
               .toList() ??
           [],
       images: List<String>.from(map['images'] ?? []),
+      mood: map['mood'],
     );
   }
 }

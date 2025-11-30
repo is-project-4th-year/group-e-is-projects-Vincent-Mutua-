@@ -29,9 +29,9 @@ class JournalActionBar extends ConsumerWidget {
       decoration: BoxDecoration(
         color: journalColors.background, // Blends with page or slightly distinct
         borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: journalColors.ink.withOpacity(0.05)),
+        border: Border.all(color: journalColors.ink.withValues(alpha: 0.05)),
         boxShadow: isListening 
-            ? [BoxShadow(color: Colors.red.withOpacity(0.2), blurRadius: 10, spreadRadius: 2)] 
+            ? [BoxShadow(color: Colors.red.withValues(alpha: 0.2), blurRadius: 10, spreadRadius: 2)] 
             : [],
       ),
       child: Row(

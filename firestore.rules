@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is authenticated and matches the userId
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // --- User-Centric Data Structure ---
+    // Matches: users/{userId}
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Matches: users/{userId}/tasks/{taskId}
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Matches: users/{userId}/journal/{entryId}
+      match /journal/{entryId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Matches: users/{userId}/focus/{sessionId}
+      match /focus/{sessionId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Matches: users/{userId}/chats/{messageId}
+      match /chats/{messageId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Matches: users/{userId}/routines/{routineId}
+      match /routines/{routineId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // --- Collection Group Queries ---
+    // These are required because we use _firestore.collectionGroup('tasks') 
+    // to update/delete items by ID without knowing the parent path.
+    
+    match /{path=**}/tasks/{taskId} {
+      allow read, update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /{path=**}/journal/{entryId} {
+      allow read, update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /{path=**}/routines/{routineId} {
+      allow read, update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+  }
+}

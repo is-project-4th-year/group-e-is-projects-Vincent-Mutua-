@@ -42,16 +42,41 @@ class JournalCard extends ConsumerWidget {
       ),
       child: GestureDetector(
         onTap: onTap,
+        onLongPress: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Delete Journal?'),
+              content: const Text('Are you sure you want to delete this entry? This cannot be undone.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    ref.read(journalControllerProvider.notifier).deleteEntry(entry.id!);
+                    Navigator.pop(context);
+                  },
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: const Text('Delete'),
+                ),
+              ],
+            ),
+          );
+        },
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: journalColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            // Softer, more diffused shadow for a "floating" feel
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: journalColors.ink.withValues(alpha: 0.05), // Softer border
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: journalColors.ink.withOpacity(0.03),
+                color: journalColors.ink.withValues(alpha: 0.03), // Softer shadow
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -60,63 +85,135 @@ class JournalCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row (Time + Decor)
-              Row(
-                children: [
-                  Icon(Icons.access_time, 
-                       size: 14, color: journalColors.ink.withOpacity(0.4)),
-                  const SizedBox(width: 6),
-                  Text(
-                    timeStr,
-                    style: TextStyle(
-                      color: journalColors.ink.withOpacity(0.4),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+              // Image Preview (if any)
+              if (entry.images.isNotEmpty)
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: SizedBox(
+                    height: 140,
+                    width: double.infinity,
+                    child: Image.network(
+                      entry.images.first,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: journalColors.canvas,
+                        child: Icon(Icons.broken_image, color: journalColors.ink.withValues(alpha: 0.3)),
+                      ),
                     ),
                   ),
-                ],
-              ),
-              
-              const SizedBox(height: 12),
+                ),
 
-              // HERO TITLE: This tag must match the one in the Screen
-              Hero(
-                tag: 'journal_title_${entry.id}',
-                child: Material(
-                  color: Colors.transparent,
-                  child: Text(
-                    (entry.title != null && entry.title!.isNotEmpty) 
-                        ? entry.title! 
-                        : "Untitled",
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: journalColors.ink,
-                      fontWeight: FontWeight.w600,
-                      height: 1.2,
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header Row (Time + Mood)
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: journalColors.accent.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            timeStr,
+                            style: TextStyle(
+                              color: journalColors.ink.withValues(alpha: 0.7),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (entry.mood != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: journalColors.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: journalColors.ink.withValues(alpha: 0.1)),
+                            ),
+                            child: Text(
+                              _getMoodEmoji(entry.mood),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
+                    
+                    const SizedBox(height: 12),
 
-              const SizedBox(height: 8),
+                    // HERO TITLE
+                    if (entry.id != null)
+                      Hero(
+                        tag: 'journal_title_${entry.id}',
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Text(
+                            (entry.title != null && entry.title!.isNotEmpty) 
+                                ? entry.title! 
+                                : "Untitled Entry",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: journalColors.ink,
+                              height: 1.3,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        (entry.title != null && entry.title!.isNotEmpty) 
+                            ? entry.title! 
+                            : "Untitled Entry",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: journalColors.ink,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
 
-              // Content Snippet
-              Text(
-                entry.content,
-                style: TextStyle(
-                  color: journalColors.ink.withOpacity(0.6),
-                  height: 1.5,
-                  fontSize: 15,
-                  fontFamily: 'InclusiveSans', // Ensure body font is readable
+                    const SizedBox(height: 8),
+
+                    // Content Snippet
+                    Text(
+                      entry.content,
+                      style: TextStyle(
+                        color: journalColors.ink.withValues(alpha: 0.6),
+                        height: 1.5,
+                        fontSize: 14,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  String _getMoodEmoji(String? mood) {
+    switch (mood) {
+      case 'Happy': return '😊';
+      case 'Calm': return '😌';
+      case 'Sad': return '😔';
+      case 'Stressed': return '😫';
+      case 'Energetic': return '⚡';
+      case 'Tired': return '😴';
+      default: return '';
+    }
   }
 }

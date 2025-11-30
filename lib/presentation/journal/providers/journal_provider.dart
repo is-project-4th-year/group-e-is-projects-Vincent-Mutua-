@@ -26,6 +26,7 @@ class JournalEditorState {
   final List<TextFormatRange> formats; // Stored formatting
   final List<String> imageUrls; // URLs from Firestore
   final List<XFile> localImages; // Newly picked images
+  final String? mood; // Selected mood
   
   // Active Toggles (for the UI buttons)
   final bool isBoldActive;
@@ -39,6 +40,7 @@ class JournalEditorState {
     this.formats = const [],
     this.imageUrls = const [],
     this.localImages = const [],
+    this.mood,
     this.isBoldActive = false,
     this.isItalicActive = false,
     this.isUnderlineActive = false,
@@ -51,6 +53,7 @@ class JournalEditorState {
     List<TextFormatRange>? formats,
     List<String>? imageUrls,
     List<XFile>? localImages,
+    String? mood,
     bool? isBoldActive,
     bool? isItalicActive,
     bool? isUnderlineActive,
@@ -62,6 +65,7 @@ class JournalEditorState {
       formats: formats ?? this.formats,
       imageUrls: imageUrls ?? this.imageUrls,
       localImages: localImages ?? this.localImages,
+      mood: mood ?? this.mood,
       isBoldActive: isBoldActive ?? this.isBoldActive,
       isItalicActive: isItalicActive ?? this.isItalicActive,
       isUnderlineActive: isUnderlineActive ?? this.isUnderlineActive,
@@ -77,6 +81,7 @@ class JournalEditorNotifier extends Notifier<JournalEditorState> {
 
   void updateTitle(String newTitle) => state = state.copyWith(title: newTitle);
   void updateContent(String newContent) => state = state.copyWith(content: newContent);
+  void updateMood(String? newMood) => state = state.copyWith(mood: newMood);
 
   void addLocalImage(XFile image) {
     state = state.copyWith(localImages: [...state.localImages, image]);
@@ -134,6 +139,7 @@ class JournalEditorNotifier extends Notifier<JournalEditorState> {
       content: entry.content,
       formats: entry.formatting, // Load the saved highlights/bolds
       imageUrls: entry.images,
+      mood: entry.mood,
     );
   }
   
@@ -195,6 +201,7 @@ class JournalController extends AsyncNotifier<void> {
         'content': editorState.content,
         'formatting': editorState.formats.map((e) => e.toMap()).toList(),
         'images': uploadedUrls,
+        'mood': editorState.mood,
         // We don't update createdAt usually, or we might update 'updatedAt'
       };
       
@@ -211,6 +218,7 @@ class JournalController extends AsyncNotifier<void> {
         createdAt: DateTime.now(),
         formatting: editorState.formats, 
         images: uploadedUrls,
+        mood: editorState.mood,
       );
 
       state = await AsyncValue.guard(() async {

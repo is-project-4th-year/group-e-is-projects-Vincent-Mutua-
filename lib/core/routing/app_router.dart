@@ -12,9 +12,10 @@ import 'package:is_application/core/routing/app_shell.dart';
 import 'package:is_application/presentation/home/ui/screens/home_screen.dart';
 import 'package:is_application/presentation/tasks/ui/screens/tasks_screen.dart';
 
-// 1. FIX: Import the FocusScreen
-import 'package:is_application/presentation/focus/ui/screens/focus_screen.dart';
 import 'package:is_application/presentation/chat/ui/chat_screen.dart';
+import 'package:is_application/presentation/profile/profile_screen.dart';
+import 'package:is_application/core/models/task_model.dart';
+import 'package:is_application/presentation/tasks/ui/screens/task_timer_screen.dart';
 
 // 2. Define your route paths as constants
 class AppRoutes {
@@ -29,9 +30,9 @@ class AppRoutes {
   static const String tasks = '/tasks';
   static const String journal = '/journal';
   
-  // 2. FIX: Add the Focus route constant
-  static const String focus = '/focus';
   static const String chat = '/chat';
+  static const String profile = '/profile';
+  static const String taskTimer = '/task-timer';
   
   // Top-level sub-page
   // static const String journalEditor = '/journal-editor';
@@ -96,8 +97,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       
       GoRoute(
-        path: AppRoutes.chat,
-        builder: (context, state) => const ChatScreen(),
+        path: AppRoutes.profile,
+        builder: (context, state) => const ProfileScreen(),
+      ),
+
+      GoRoute(
+        path: AppRoutes.taskTimer,
+        builder: (context, state) {
+          final task = state.extra as TaskModel;
+          return TaskTimerScreen(task: task);
+        },
       ),
       
       // --- StatefulShellRoute for Persistent Bottom Navigation ---
@@ -126,11 +135,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(path: AppRoutes.journal, builder: (context, state) => const JournalListScreen()),
             ],
           ),
-          
-          // 3. FIX: Add the 4th Branch for the Focus Screen
+
+          // Branch 3 (Chat)
           StatefulShellBranch(
             routes: [
-              GoRoute(path: AppRoutes.focus, builder: (context, state) => const FocusScreen()),
+              GoRoute(path: AppRoutes.chat, builder: (context, state) => const ChatScreen()),
             ],
           ),
         ],

@@ -70,7 +70,7 @@ class TaskTile extends ConsumerWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -105,7 +105,7 @@ class TaskTile extends ConsumerWidget {
                                 color: task.isCompleted ? tasksPalette.accent : Colors.transparent,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: task.isCompleted ? tasksPalette.accent : tasksPalette.textSecondary.withOpacity(0.5),
+                                  color: task.isCompleted ? tasksPalette.accent : tasksPalette.textSecondary.withValues(alpha: 0.5),
                                   width: 2,
                                 ),
                               ),
@@ -128,7 +128,7 @@ class TaskTile extends ConsumerWidget {
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                     color: task.isCompleted 
-                                        ? tasksPalette.textSecondary.withOpacity(0.5) 
+                                        ? tasksPalette.textSecondary.withValues(alpha: 0.5) 
                                         : tasksPalette.textPrimary,
                                     decoration: task.isCompleted ? TextDecoration.lineThrough : null,
                                   ),
@@ -169,7 +169,7 @@ class TaskTile extends ConsumerWidget {
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: tasksPalette.accent.withOpacity(0.1),
+                                            color: tasksPalette.accent.withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(8),
                                           ),
                                           child: Text(

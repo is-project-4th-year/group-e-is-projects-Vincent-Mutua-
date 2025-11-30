@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_application/core/models/journal_entry_model.dart'; 
 import 'package:is_application/core/models/task_model.dart';
 import 'package:is_application/core/models/user_model.dart';
+import 'package:is_application/presentation/chat/data/chat_message_model.dart';
+import 'package:is_application/core/models/routine_model.dart';
 import 'package:is_application/core/providers/firebase_providers.dart';
 
 /// The "contract" for our Firestore repository.
@@ -13,14 +15,24 @@ abstract class FirestoreRepository {
   // --- Task Methods ---
   Stream<List<TaskModel>> watchTasks(String uid);
   Future<String> addTask(TaskModel task);
-  Future<void> updateTask(String taskId, Map<String, dynamic> data);
-  Future<void> deleteTask(String taskId);
+  Future<void> updateTask(String uid, String taskId, Map<String, dynamic> data);
+  Future<void> deleteTask(String uid, String taskId);
   
   // --- Journal Methods ---
   Stream<List<JournalEntryModel>> watchJournalEntries(String uid);
   Future<void> addJournalEntry(JournalEntryModel entry);
   Future<void> updateJournalEntry(String entryId, Map<String, dynamic> data);
   Future<void> deleteJournalEntry(String entryId);
+
+  // --- Chat History Methods ---
+  Future<void> saveChatMessage(String uid, ChatMessage message);
+  Stream<List<ChatMessage>> watchChatMessages(String uid);
+
+  // --- Routine Methods ---
+  Stream<List<RoutineModel>> watchRoutines(String uid);
+  Future<void> addRoutine(RoutineModel routine);
+  Future<void> updateRoutine(String uid, String routineId, RoutineModel routine);
+  Future<void> deleteRoutine(String uid, String routineId);
 }
 
 // --- The Implementation ---
@@ -30,14 +42,8 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
 
   FirestoreRepositoryImpl(this._firestore);
 
-  /// Reference to the 'USERS' collection in Firestore.
-  CollectionReference get _usersCollection => _firestore.collection('USERS');
-
-  /// Reference to the 'TASKS' collection in Firestore.
-  CollectionReference get _tasksCollection => _firestore.collection('TASKS');
-
-  /// Reference to the 'JOURNAL' collection in Firestore.
-  CollectionReference get _journalCollection => _firestore.collection('JOURNAL');
+  /// Reference to the 'users' collection in Firestore.
+  CollectionReference get _usersCollection => _firestore.collection('users');
 
   // --- User Method Implementation ---
   @override
@@ -54,8 +60,9 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
   @override
   Stream<List<TaskModel>> watchTasks(String uid) {
     try {
-      return _tasksCollection
-          .where('uid', isEqualTo: uid)
+      return _usersCollection
+          .doc(uid)
+          .collection('tasks')
           .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
@@ -71,7 +78,10 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
   @override
   Future<String> addTask(TaskModel task) async {
     try {
-      final docRef = await _tasksCollection.add(task.toJson());
+      final docRef = await _usersCollection
+          .doc(task.uid)
+          .collection('tasks')
+          .add(task.toJson());
       return docRef.id;
     } on FirebaseException catch (e) {
       throw Exception('Error adding task: ${e.message}');
@@ -79,36 +89,43 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
   }
 
   @override
-  Future<void> updateTask(String taskId, Map<String, dynamic> data) async {
+  Future<void> updateTask(String uid, String taskId, Map<String, dynamic> data) async {
     try {
-      await _tasksCollection.doc(taskId).update(data);
+      await _usersCollection
+          .doc(uid)
+          .collection('tasks')
+          .doc(taskId)
+          .update(data);
     } on FirebaseException catch (e) {
       throw Exception('Error updating task: ${e.message}');
     }
   }
 
   @override
-  Future<void> deleteTask(String taskId) async {
+  Future<void> deleteTask(String uid, String taskId) async {
     try {
-      await _tasksCollection.doc(taskId).delete();
+      await _usersCollection
+          .doc(uid)
+          .collection('tasks')
+          .doc(taskId)
+          .delete();
     } on FirebaseException catch (e) {
       throw Exception('Error deleting task: ${e.message}');
     }
   }
 
-  // --- 4. NEW: Journal Method Implementations (FIXED) ---
+  // --- Journal Method Implementations ---
 
   @override
   Stream<List<JournalEntryModel>> watchJournalEntries(String uid) {
     try {
-      return _journalCollection
-          .where('uid', isEqualTo: uid)
-          // NOTE: We sort in memory to avoid needing a composite index on (uid, createdAt)
-          // .orderBy('createdAt', descending: true) 
+      return _usersCollection
+          .doc(uid)
+          .collection('journal') // Renamed from journal_entries
           .snapshots()
           .map((snapshot) {
         final entries = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           return JournalEntryModel.fromMap(data, doc.id);
         }).toList();
 
@@ -125,8 +142,10 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
   @override
   Future<void> addJournalEntry(JournalEntryModel entry) async {
     try {
-      // FIXED: Changed .toJson() to .toMap()
-      await _journalCollection.add(entry.toMap());
+      await _usersCollection
+          .doc(entry.uid)
+          .collection('journal') // Renamed from journal_entries
+          .add(entry.toMap());
     } on FirebaseException catch (e) {
       throw Exception('Error adding journal entry: ${e.message}');
     }
@@ -135,7 +154,12 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
   @override
   Future<void> updateJournalEntry(String entryId, Map<String, dynamic> data) async {
     try {
-      await _journalCollection.doc(entryId).update(data);
+      final query = await _firestore.collectionGroup('journal').where(FieldPath.documentId, isEqualTo: entryId).get();
+      if (query.docs.isNotEmpty) {
+        await query.docs.first.reference.update(data);
+      } else {
+        throw Exception('Journal entry not found');
+      }
     } on FirebaseException catch (e) {
       throw Exception('Error updating journal entry: ${e.message}');
     }
@@ -144,9 +168,103 @@ class FirestoreRepositoryImpl implements FirestoreRepository {
   @override
   Future<void> deleteJournalEntry(String entryId) async {
     try {
-      await _journalCollection.doc(entryId).delete();
+      final query = await _firestore.collectionGroup('journal').where(FieldPath.documentId, isEqualTo: entryId).get();
+      if (query.docs.isNotEmpty) {
+        await query.docs.first.reference.delete();
+      } else {
+        throw Exception('Journal entry not found');
+      }
     } on FirebaseException catch (e) {
       throw Exception('Error deleting journal entry: ${e.message}');
+    }
+  }
+
+  // --- Chat History Method Implementations ---
+
+  @override
+  Future<void> saveChatMessage(String uid, ChatMessage message) async {
+    try {
+      await _usersCollection
+          .doc(uid)
+          .collection('chats') // Renamed from chat_history
+          .add(message.toMap());
+    } on FirebaseException catch (e) {
+      throw Exception('Error saving chat message: ${e.message}');
+    }
+  }
+
+  @override
+  Stream<List<ChatMessage>> watchChatMessages(String uid) {
+    try {
+      return _usersCollection
+          .doc(uid)
+          .collection('chats') // Renamed from chat_history
+          .orderBy('timestamp', descending: true)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => ChatMessage.fromMap(doc.data(), doc.id))
+            .toList();
+      });
+    } on FirebaseException catch (e) {
+      throw Exception('Error watching chat messages: ${e.message}');
+    }
+  }
+
+  // --- Routine Method Implementations ---
+
+  @override
+  Stream<List<RoutineModel>> watchRoutines(String uid) {
+    try {
+      return _usersCollection
+          .doc(uid)
+          .collection('routines')
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => RoutineModel.fromSnapshot(doc))
+            .toList();
+      });
+    } on FirebaseException catch (e) {
+      throw Exception('Error watching routines: ${e.message}');
+    }
+  }
+
+  @override
+  Future<void> addRoutine(RoutineModel routine) async {
+    try {
+      await _usersCollection
+          .doc(routine.uid)
+          .collection('routines')
+          .add(routine.toMap());
+    } on FirebaseException catch (e) {
+      throw Exception('Error adding routine: ${e.message}');
+    }
+  }
+
+  @override
+  Future<void> updateRoutine(String uid, String routineId, RoutineModel routine) async {
+    try {
+      await _usersCollection
+          .doc(uid)
+          .collection('routines')
+          .doc(routineId)
+          .update(routine.toMap());
+    } on FirebaseException catch (e) {
+      throw Exception('Error updating routine: ${e.message}');
+    }
+  }
+
+  @override
+  Future<void> deleteRoutine(String uid, String routineId) async {
+    try {
+      await _usersCollection
+          .doc(uid)
+          .collection('routines')
+          .doc(routineId)
+          .delete();
+    } on FirebaseException catch (e) {
+      throw Exception('Error deleting routine: ${e.message}');
     }
   }
 }
